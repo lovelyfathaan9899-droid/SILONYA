@@ -1,0 +1,127 @@
+/**
+ * SILONYA shared design tokens — Tailwind CSS v4 CSS-first theme.
+ * Source of truth: DESIGN_SYSTEM.md §2 (Brand Identity).
+ * Imported by apps/web and apps/admin global stylesheets. Do not duplicate
+ * these values locally in an app — extend this file instead so both apps
+ * (and packages/ui) stay visually consistent (DESIGN_SYSTEM.md §1, principle 3).
+ */
+
+@theme {
+  /* Color system — DESIGN_SYSTEM.md §2.1 */
+  --color-ink: #111111;
+  --color-bone: #f5f3ef;
+  --color-white: #ffffff;
+  --color-stone: #8a8681;
+  --color-mist: #e7e4de;
+  --color-accent: #a8552f;
+  --color-error: #b3261e;
+  --color-success: #2e5339;
+
+  /* Typography — DESIGN_SYSTEM.md §2.2 */
+  --font-display: "Canela Placeholder", ui-serif, Georgia, serif;
+  --font-sans: "Suisse Placeholder", "Inter", ui-sans-serif, system-ui, sans-serif;
+
+  /* Modular type scale (1.25 ratio) */
+  --text-xs: 0.64rem;
+  --text-sm: 0.8rem;
+  --text-base: 1rem;
+  --text-lg: 1.25rem;
+  --text-xl: 1.563rem;
+  --text-2xl: 1.953rem;
+  --text-3xl: 2.441rem;
+  --text-4xl: 3.052rem;
+  --text-5xl: 3.815rem;
+  --text-6xl: 4.768rem;
+
+  /* Spacing — 8px base unit, DESIGN_SYSTEM.md §2.3, for macro/layout spacing
+     (section gaps, grid gutters). These named steps override Tailwind's
+     dynamic scale only for these exact numbers; component-internal sizing
+     (e.g. `h-9`, `h-11` on inputs/buttons) still resolves through
+     Tailwind v4's built-in dynamic multiplier and is unaffected. */
+  --spacing-1: 0.5rem;
+  --spacing-2: 1rem;
+  --spacing-3: 1.5rem;
+  --spacing-4: 2rem;
+  --spacing-5: 2.5rem;
+  --spacing-6: 3rem;
+  --spacing-8: 4rem;
+  --spacing-10: 5rem;
+  --spacing-12: 6rem;
+
+  /* Breakpoints — DESIGN_SYSTEM.md §5 */
+  --breakpoint-sm: 40rem; /* 640px */
+  --breakpoint-md: 48rem; /* 768px */
+  --breakpoint-lg: 64rem; /* 1024px */
+  --breakpoint-xl: 80rem; /* 1280px */
+  --breakpoint-2xl: 96rem; /* 1536px */
+
+  /* Motion — DESIGN_SYSTEM.md §2.5. Durations (150-300ms) are used as plain
+     arbitrary Tailwind values (e.g. `duration-200`) — v4 generates these
+     dynamically, no named token needed. */
+  --ease-editorial: cubic-bezier(0.16, 1, 0.3, 1);
+
+  /* Radius — minimal, editorial (COS/Aesop-inspired), never fully rounded */
+  --radius-sm: 0.125rem;
+  --radius-md: 0.25rem;
+  --radius-lg: 0.5rem;
+
+  /* Shadows — soft and restrained; a shadow is a hint of elevation, not a
+     material-design drop shadow. Values re-declared under the dark theme
+     below since a shadow that reads correctly on --color-bone does not
+     automatically read correctly on a near-black surface. */
+  --shadow-sm: 0 1px 2px 0 rgb(17 17 17 / 0.04);
+  --shadow-md: 0 4px 16px -4px rgb(17 17 17 / 0.08);
+  --shadow-lg: 0 16px 40px -8px rgb(17 17 17 / 0.12);
+}
+
+/**
+ * Placeholder font families are named explicitly so a future licensed
+ * typeface swap (DESIGN_SYSTEM.md §8) is a one-line change here, not a
+ * hunt through every component.
+ */
+
+/**
+ * Dark mode — DESIGN_SYSTEM.md §2.1 originally deferred dark mode past MVP;
+ * the theme *architecture* (this file + packages/ui/src/theme) was brought
+ * forward at the user's explicit request in Phase 3. The exact palette below
+ * is a reasonable, WCAG AA-checked default, not final art direction — treat
+ * it the same way the doc treats the light palette's placeholder typefaces:
+ * swappable without touching component code, since every component
+ * references these semantic tokens rather than literal colors.
+ *
+ * Two layers, per the artifact theming convention: a `prefers-color-scheme`
+ * default for users who haven't made an explicit choice, and an explicit
+ * `data-theme` attribute (stamped on <html> by ThemeProvider) that always
+ * wins once the user (or system-preference detection on first load) sets it.
+ */
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --color-ink: #f2f0ec;
+    --color-bone: #121212;
+    --color-white: #1c1c1a;
+    --color-stone: #a19c94;
+    --color-mist: #2a2825;
+    --color-accent: #c97b52;
+    --color-error: #e2897e;
+    --color-success: #7fbf98;
+
+    --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.3);
+    --shadow-md: 0 4px 16px -4px rgb(0 0 0 / 0.4);
+    --shadow-lg: 0 16px 40px -8px rgb(0 0 0 / 0.5);
+  }
+}
+
+:root[data-theme="dark"] {
+  --color-ink: #f2f0ec;
+  --color-bone: #121212;
+  --color-white: #1c1c1a;
+  --color-stone: #a19c94;
+  --color-mist: #2a2825;
+  --color-accent: #c97b52;
+  --color-error: #e2897e;
+  --color-success: #7fbf98;
+
+  --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.3);
+  --shadow-md: 0 4px 16px -4px rgb(0 0 0 / 0.4);
+  --shadow-lg: 0 16px 40px -8px rgb(0 0 0 / 0.5);
+}

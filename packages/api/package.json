@@ -1,0 +1,30 @@
+{
+  "name": "@silonya/api",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Internal tRPC API layer — domain routers and service logic (API_SPECIFICATION.md) consumed by apps/web and apps/admin",
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "lint": "eslint . --max-warnings 0",
+    "typecheck": "tsc --noEmit",
+    "clean": "rm -rf .turbo node_modules"
+  },
+  "dependencies": {
+    "@silonya/auth": "workspace:*",
+    "@silonya/database": "workspace:*",
+    "@silonya/utils": "workspace:*",
+    "@trpc/server": "^11.0.0",
+    "cloudinary": "^2.5.1",
+    "superjson": "^2.2.2",
+    "zod": "^3.24.1"
+  },
+  "devDependencies": {
+    "@silonya/config": "workspace:*",
+    "@types/node": "^22.10.0",
+    "eslint": "^9.17.0",
+    "typescript": "^5.7.0"
+  }
+}

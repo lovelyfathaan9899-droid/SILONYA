@@ -1,0 +1,5 @@
+@import "@silonya/ui/styles.css";
+
+/* Scans packages/ui for Tailwind class usage once components exist there
+   (Tailwind v4 CSS-first config — apps/web itself is auto-detected). */
+@source "../../../packages/ui/src/**/*.{ts,tsx}";

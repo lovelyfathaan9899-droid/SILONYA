@@ -1,0 +1,44 @@
+{
+  "name": "silonya",
+  "private": true,
+  "version": "0.0.0",
+  "description": "SILONYA — premium global fashion e-commerce platform (monorepo root)",
+  "packageManager": "pnpm@11.12.0",
+  "engines": {
+    "node": ">=20.11.0"
+  },
+  "scripts": {
+    "dev": "turbo run dev",
+    "build": "turbo run build",
+    "lint": "turbo run lint",
+    "lint:fix": "turbo run lint -- --fix",
+    "typecheck": "turbo run typecheck",
+    "test": "turbo run test",
+    "format": "prettier --write \"**/*.{ts,tsx,js,jsx,json,md,mdx,css}\" --cache",
+    "format:check": "prettier --check \"**/*.{ts,tsx,js,jsx,json,md,mdx,css}\" --cache",
+    "clean": "turbo run clean && rm -rf node_modules",
+    "prepare": "husky",
+    "db:generate": "pnpm --filter @silonya/database generate",
+    "db:migrate": "pnpm --filter @silonya/database migrate:dev",
+    "db:seed": "pnpm --filter @silonya/database seed",
+    "db:studio": "pnpm --filter @silonya/database studio"
+  },
+  "devDependencies": {
+    "@silonya/config": "workspace:*",
+    "turbo": "^2.3.0",
+    "eslint": "^9.17.0",
+    "prettier": "^3.4.0",
+    "prettier-plugin-tailwindcss": "^0.6.9",
+    "husky": "^9.1.0",
+    "lint-staged": "^15.2.0",
+    "typescript": "^5.7.0"
+  },
+  "lint-staged": {
+    "*.{ts,tsx,js,jsx}": [
+      "eslint --fix"
+    ],
+    "*.{ts,tsx,js,jsx,json,md,mdx,css}": [
+      "prettier --write"
+    ]
+  }
+}

@@ -1,0 +1,6 @@
+/**
+ * SILONYA design system stylesheet entry point.
+ * Imported once by each app's root layout (apps/web, apps/admin).
+ */
+@import "tailwindcss";
+@import "@silonya/config/tailwind/tokens.css";

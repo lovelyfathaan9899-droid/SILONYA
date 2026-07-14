@@ -1,0 +1,155 @@
+"use client";
+
+import type { LucideIcon } from "lucide-react";
+import { type ElementType, type ReactNode, type SubmitEventHandler, useState } from "react";
+import { Icon } from "../icons/Icon";
+import { Container } from "../layout/Container";
+import { cn } from "../lib/cn";
+import { Button } from "../primitives/Button";
+import { Input } from "../primitives/Input";
+import { Label } from "../primitives/Label";
+
+export interface FooterLinkColumn {
+  heading: string;
+  links: { label: string; href: string }[];
+}
+
+export interface FooterSocialLink {
+  label: string;
+  href: string;
+  icon: LucideIcon;
+}
+
+export interface FooterProps {
+  logo: ReactNode;
+  columns: FooterLinkColumn[];
+  socialLinks?: FooterSocialLink[];
+  legalLinks?: { label: string; href: string }[];
+  /** Newsletter form is presentational only — wire the real subscription endpoint in a later phase (this is visual-foundation scope). Defaults to a no-op. */
+  onNewsletterSubmit?: (email: string) => void;
+  copyrightHolder?: string;
+  linkAs?: ElementType;
+  className?: string;
+}
+
+/**
+ * Premium editorial footer (DESIGN_SYSTEM.md §1 — "confident restraint"):
+ * generous spacing, restrained color, no clutter. Content is fully
+ * prop-driven, same reasoning as Header (TECH_STACK.md §3).
+ */
+export function Footer({
+  logo,
+  columns,
+  socialLinks,
+  legalLinks,
+  onNewsletterSubmit,
+  copyrightHolder = "SILONYA",
+  linkAs: LinkComponent = "a",
+  className,
+}: FooterProps) {
+  const [email, setEmail] = useState("");
+  const [submitted, setSubmitted] = useState(false);
+
+  const handleSubmit: SubmitEventHandler<HTMLFormElement> = (event) => {
+    event.preventDefault();
+    if (!email) return;
+    onNewsletterSubmit?.(email);
+    setSubmitted(true);
+    setEmail("");
+  };
+
+  return (
+    <footer className={cn("border-mist bg-bone border-t", className)}>
+      <Container>
+        <div className="grid grid-cols-4 gap-8 py-12 md:py-16 lg:grid-cols-12">
+          <div className="col-span-4 flex flex-col gap-4 lg:col-span-4">
+            {logo}
+            <form onSubmit={handleSubmit} className="flex max-w-sm flex-col gap-2">
+              <Label htmlFor="footer-newsletter-email">Sign up for updates</Label>
+              <div className="flex gap-2">
+                <Input
+                  id="footer-newsletter-email"
+                  type="email"
+                  placeholder="Email address"
+                  value={email}
+                  onChange={(event) => {
+                    setEmail(event.target.value);
+                    setSubmitted(false);
+                  }}
+                  required
+                />
+                <Button type="submit" variant="secondary">
+                  Subscribe
+                </Button>
+              </div>
+              <p aria-live="polite" className="text-stone min-h-[1.25rem] font-sans text-xs">
+                {submitted ? "Thank you — you're on the list." : ""}
+              </p>
+            </form>
+          </div>
+
+          {columns.map((column) => (
+            <nav
+              key={column.heading}
+              aria-label={column.heading}
+              className="col-span-2 flex flex-col gap-3 lg:col-span-2"
+            >
+              <p className="text-stone font-sans text-xs uppercase tracking-wide">
+                {column.heading}
+              </p>
+              <ul className="flex flex-col gap-2">
+                {column.links.map((link) => (
+                  <li key={link.href}>
+                    <LinkComponent
+                      href={link.href}
+                      className="text-ink hover:text-accent font-sans text-sm transition-colors duration-150"
+                    >
+                      {link.label}
+                    </LinkComponent>
+                  </li>
+                ))}
+              </ul>
+            </nav>
+          ))}
+        </div>
+
+        <div className="border-mist flex flex-col gap-4 border-t py-6 md:flex-row md:items-center md:justify-between">
+          <p className="text-stone font-sans text-xs">
+            © {new Date().getFullYear()} {copyrightHolder}. All rights reserved.
+          </p>
+
+          {legalLinks && legalLinks.length > 0 ? (
+            <ul className="flex flex-wrap gap-4">
+              {legalLinks.map((link) => (
+                <li key={link.href}>
+                  <LinkComponent
+                    href={link.href}
+                    className="text-stone hover:text-ink font-sans text-xs transition-colors duration-150"
+                  >
+                    {link.label}
+                  </LinkComponent>
+                </li>
+              ))}
+            </ul>
+          ) : null}
+
+          {socialLinks && socialLinks.length > 0 ? (
+            <ul className="flex items-center gap-3">
+              {socialLinks.map((social) => (
+                <li key={social.href}>
+                  <LinkComponent
+                    href={social.href}
+                    aria-label={social.label}
+                    className="text-stone hover:text-ink flex h-9 w-9 items-center justify-center transition-colors duration-150"
+                  >
+                    <Icon icon={social.icon} size={18} />
+                  </LinkComponent>
+                </li>
+              ))}
+            </ul>
+          ) : null}
+        </div>
+      </Container>
+    </footer>
+  );
+}

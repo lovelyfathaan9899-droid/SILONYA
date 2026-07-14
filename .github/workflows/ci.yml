@@ -1,0 +1,71 @@
+name: CI
+
+# PROJECT_RULES.md §5–6 — every PR must pass lint, typecheck, and build
+# before merge is possible. DEPLOYMENT.md §3 — this is the automated gate
+# that runs before a Vercel preview deployment is considered ready.
+
+on:
+  pull_request:
+  push:
+    branches: [main, develop]
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  # Placeholder values sufficient for `prisma generate`/build/typecheck —
+  # no live database is required for these checks (DATABASE_ARCHITECTURE.md
+  # §6). Real migrations against a real database happen at deploy time
+  # (DEPLOYMENT.md §3), not in this workflow.
+  DATABASE_URL: "postgresql://ci:ci@localhost:5432/silonya_ci?schema=public"
+  DIRECT_URL: "postgresql://ci:ci@localhost:5432/silonya_ci?schema=public"
+  AUTH_SECRET: "ci-only-secret-not-used-for-anything-real"
+  NEXT_PUBLIC_APP_URL: "http://localhost:3000"
+  NEXT_PUBLIC_ADMIN_URL: "http://localhost:3001"
+
+jobs:
+  verify:
+    name: Lint, typecheck, build
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version-file: ".nvmrc"
+          cache: "pnpm"
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Write .env for local tooling
+        # packages/database's scripts load ../../.env via dotenv-cli
+        # (TECH_STACK.md §3) — CI already has these as job-level env vars,
+        # this just gives dotenv-cli a file to find so it doesn't error.
+        run: |
+          cat <<EOF > .env
+          DATABASE_URL=$DATABASE_URL
+          DIRECT_URL=$DIRECT_URL
+          AUTH_SECRET=$AUTH_SECRET
+          EOF
+
+      - name: Generate Prisma client
+        run: pnpm db:generate
+
+      - name: Format check
+        run: pnpm format:check
+
+      - name: Typecheck
+        run: pnpm typecheck
+
+      - name: Lint
+        run: pnpm lint
+
+      - name: Build
+        run: pnpm build

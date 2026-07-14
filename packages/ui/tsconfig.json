@@ -1,0 +1,9 @@
+{
+  "extends": "@silonya/config/typescript/nextjs.json",
+  "compilerOptions": {
+    "outDir": "dist",
+    "rootDir": "src",
+    "jsx": "react-jsx"
+  },
+  "include": ["src"]
+}

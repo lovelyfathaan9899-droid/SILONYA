@@ -1,0 +1,39 @@
+{
+  "name": "@silonya/web",
+  "version": "0.0.0",
+  "private": true,
+  "description": "SILONYA customer-facing storefront (TECH_STACK.md §3)",
+  "scripts": {
+    "dev": "dotenv -e ../../.env -- next dev --turbopack",
+    "build": "dotenv -e ../../.env -- next build",
+    "start": "dotenv -e ../../.env -- next start",
+    "lint": "eslint . --max-warnings 0",
+    "typecheck": "tsc --noEmit",
+    "clean": "rm -rf .turbo .next node_modules"
+  },
+  "dependencies": {
+    "next": "^15.1.0",
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0",
+    "@silonya/ui": "workspace:*",
+    "@silonya/utils": "workspace:*",
+    "@silonya/api": "workspace:*",
+    "@silonya/auth": "workspace:*",
+    "@silonya/database": "workspace:*",
+    "@trpc/server": "^11.0.0",
+    "lucide-react": "^0.469.0",
+    "server-only": "^0.0.1",
+    "zustand": "^5.0.2"
+  },
+  "devDependencies": {
+    "@silonya/config": "workspace:*",
+    "@tailwindcss/postcss": "^4.0.0",
+    "@types/node": "^22.10.0",
+    "@types/react": "^19.0.0",
+    "@types/react-dom": "^19.0.0",
+    "dotenv-cli": "^8.0.0",
+    "eslint": "^9.17.0",
+    "tailwindcss": "^4.0.0",
+    "typescript": "^5.7.0"
+  }
+}
