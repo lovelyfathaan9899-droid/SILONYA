@@ -15,6 +15,7 @@
   "dependencies": {
     "@silonya/auth": "workspace:*",
     "@silonya/database": "workspace:*",
+    "@silonya/emails": "workspace:*",
     "@silonya/utils": "workspace:*",
     "@trpc/server": "^11.0.0",
     "cloudinary": "^2.5.1",

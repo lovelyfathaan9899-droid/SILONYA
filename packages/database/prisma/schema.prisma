@@ -41,13 +41,13 @@ model User {
   updatedAt DateTime  @updatedAt @map("updated_at")
   deletedAt DateTime? @map("deleted_at")
 
-  authIdentities AuthIdentity[]
-  sessions       Session[]
-  addresses      Address[]
-  carts          Cart[]
-  orders         Order[]
-  reviews        Review[]
-  wishlist       Wishlist?
+  authIdentities      AuthIdentity[]
+  sessions            Session[]
+  addresses           Address[]
+  carts               Cart[]
+  orders              Order[]
+  reviews             Review[]
+  wishlist            Wishlist?
   discountRedemptions DiscountRedemption[]
 
   @@map("users")
@@ -86,23 +86,23 @@ model Session {
 }
 
 model Address {
-  id         String  @id @default(uuid())
-  userId     String? @map("user_id")
-  line1      String
-  line2      String?
-  city       String
-  region     String?
-  postalCode String  @map("postal_code")
-  countryCode String @map("country_code") @db.Char(2)
-  phone      String?
-  isDefault  Boolean @default(false) @map("is_default")
+  id          String  @id @default(uuid())
+  userId      String? @map("user_id")
+  line1       String
+  line2       String?
+  city        String
+  region      String?
+  postalCode  String  @map("postal_code")
+  countryCode String  @map("country_code") @db.Char(2)
+  phone       String?
+  isDefault   Boolean @default(false) @map("is_default")
 
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
 
-  user               User?   @relation(fields: [userId], references: [id], onDelete: Cascade)
-  ordersAsShipping   Order[] @relation("OrderShippingAddress")
-  ordersAsBilling    Order[] @relation("OrderBillingAddress")
+  user             User?   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  ordersAsShipping Order[] @relation("OrderShippingAddress")
+  ordersAsBilling  Order[] @relation("OrderBillingAddress")
 
   @@index([userId])
   @@map("addresses")
@@ -124,13 +124,15 @@ model AdminUser {
   failedLoginAttempts Int       @default(0) @map("failed_login_attempts")
   lockedUntil         DateTime? @map("locked_until")
 
-  createdAt      DateTime  @default(now()) @map("created_at")
-  updatedAt      DateTime  @updatedAt @map("updated_at")
-  deactivatedAt  DateTime? @map("deactivated_at")
+  createdAt     DateTime  @default(now()) @map("created_at")
+  updatedAt     DateTime  @updatedAt @map("updated_at")
+  deactivatedAt DateTime? @map("deactivated_at")
 
-  role            Role             @relation(fields: [roleId], references: [id], onDelete: Restrict)
-  auditLogEntries AuditLogEntry[]
-  sessions        AdminSession[]
+  role              Role               @relation(fields: [roleId], references: [id], onDelete: Restrict)
+  auditLogEntries   AuditLogEntry[]
+  sessions          AdminSession[]
+  orderNotes        OrderNote[]
+  orderStatusEvents OrderStatusEvent[]
 
   @@index([roleId])
   @@map("admin_users")
@@ -159,8 +161,8 @@ model AdminSession {
 }
 
 model Role {
-  id          String @id @default(uuid())
-  name        String @unique
+  id          String  @id @default(uuid())
+  name        String  @unique
   description String?
 
   adminUsers  AdminUser[]
@@ -170,8 +172,8 @@ model Role {
 }
 
 model Permission {
-  id          String @id @default(uuid())
-  key         String @unique // e.g. "orders:write"
+  id          String  @id @default(uuid())
+  key         String  @unique // e.g. "orders:write"
   description String?
 
   roles RolePermission[]
@@ -191,13 +193,13 @@ model RolePermission {
 }
 
 model AuditLogEntry {
-  id          String   @id @default(uuid())
-  adminUserId String   @map("admin_user_id")
+  id          String  @id @default(uuid())
+  adminUserId String  @map("admin_user_id")
   action      String
-  targetType  String   @map("target_type")
-  targetId    String   @map("target_id")
+  targetType  String  @map("target_type")
+  targetId    String  @map("target_id")
   metadata    Json?
-  ipAddress   String?  @map("ip_address")
+  ipAddress   String? @map("ip_address")
 
   createdAt DateTime @default(now()) @map("created_at")
 
@@ -219,28 +221,28 @@ enum ProductStatus {
 }
 
 model Product {
-  id              String        @id @default(uuid())
-  slug            String        @unique
-  name            String
-  description     String?
-  status          ProductStatus @default(draft)
-  basePrice       Int           @map("base_price") // minor units
-  currency        String        @default("USD") @db.Char(3)
-  brandId         String?       @map("brand_id") // reserved for future multi-brand
-  seoTitle        String?       @map("seo_title")
-  seoDescription  String?       @map("seo_description")
-  publishedAt     DateTime?     @map("published_at")
+  id             String        @id @default(uuid())
+  slug           String        @unique
+  name           String
+  description    String?
+  status         ProductStatus @default(draft)
+  basePrice      Int           @map("base_price") // minor units
+  currency       String        @default("USD") @db.Char(3)
+  brandId        String?       @map("brand_id") // reserved for future multi-brand
+  seoTitle       String?       @map("seo_title")
+  seoDescription String?       @map("seo_description")
+  publishedAt    DateTime?     @map("published_at")
 
   createdAt DateTime  @default(now()) @map("created_at")
   updatedAt DateTime  @updatedAt @map("updated_at")
   deletedAt DateTime? @map("deleted_at")
 
-  options      ProductOption[]
-  variants     ProductVariant[]
-  media        ProductMedia[]
-  collections  ProductCollection[]
-  categories   ProductCategory[]
-  reviews      Review[]
+  options     ProductOption[]
+  variants    ProductVariant[]
+  media       ProductMedia[]
+  collections ProductCollection[]
+  categories  ProductCategory[]
+  reviews     Review[]
 
   @@index([status])
   @@map("products")
@@ -265,7 +267,7 @@ model ProductOptionValue {
   value           String // e.g. "Black", "M"
   position        Int    @default(0)
 
-  productOption ProductOption       @relation(fields: [productOptionId], references: [id], onDelete: Cascade)
+  productOption ProductOption        @relation(fields: [productOptionId], references: [id], onDelete: Cascade)
   variants      VariantOptionValue[]
 
   @@index([productOptionId])
@@ -273,23 +275,23 @@ model ProductOptionValue {
 }
 
 model ProductVariant {
-  id              String  @id @default(uuid())
-  productId       String  @map("product_id")
-  sku             String  @unique
-  price           Int?    // overrides Product.basePrice if set (minor units)
-  compareAtPrice  Int?    @map("compare_at_price")
-  weightGrams     Int?    @map("weight_grams")
-  barcode         String?
+  id             String  @id @default(uuid())
+  productId      String  @map("product_id")
+  sku            String  @unique
+  price          Int? // overrides Product.basePrice if set (minor units)
+  compareAtPrice Int?    @map("compare_at_price")
+  weightGrams    Int?    @map("weight_grams")
+  barcode        String?
 
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
 
-  product      Product              @relation(fields: [productId], references: [id], onDelete: Cascade)
-  optionValues VariantOptionValue[]
-  media        ProductMedia[]
-  inventory    Inventory[]
-  cartItems    CartItem[]
-  orderItems   OrderItem[]
+  product       Product              @relation(fields: [productId], references: [id], onDelete: Cascade)
+  optionValues  VariantOptionValue[]
+  media         ProductMedia[]
+  inventory     Inventory[]
+  cartItems     CartItem[]
+  orderItems    OrderItem[]
   wishlistItems WishlistItem[]
 
   @@index([productId])
@@ -328,8 +330,8 @@ model Category {
   slug     String  @unique
   parentId String? @map("parent_id")
 
-  parent   Category?  @relation("CategoryToCategory", fields: [parentId], references: [id], onDelete: SetNull)
-  children Category[] @relation("CategoryToCategory")
+  parent   Category?         @relation("CategoryToCategory", fields: [parentId], references: [id], onDelete: SetNull)
+  children Category[]        @relation("CategoryToCategory")
   products ProductCategory[]
 
   @@index([parentId])
@@ -423,11 +425,11 @@ model Cart {
 }
 
 model CartItem {
-  id                 String @id @default(uuid())
-  cartId             String @map("cart_id")
-  variantId          String @map("variant_id")
-  quantity           Int
-  unitPriceSnapshot  Int    @map("unit_price_snapshot")
+  id                String @id @default(uuid())
+  cartId            String @map("cart_id")
+  variantId         String @map("variant_id")
+  quantity          Int
+  unitPriceSnapshot Int    @map("unit_price_snapshot")
 
   cart    Cart           @relation(fields: [cartId], references: [id], onDelete: Cascade)
   variant ProductVariant @relation(fields: [variantId], references: [id], onDelete: Restrict)
@@ -462,11 +464,11 @@ enum OrderEventTrigger {
 }
 
 model Order {
-  id                String      @id @default(uuid())
-  orderNumber       String      @unique @map("order_number")
-  userId            String?     @map("user_id")
-  guestEmail        String?     @map("guest_email")
-  status            OrderStatus @default(pending_payment)
+  id          String      @id @default(uuid())
+  orderNumber String      @unique @map("order_number")
+  userId      String?     @map("user_id")
+  guestEmail  String?     @map("guest_email")
+  status      OrderStatus @default(pending_payment)
 
   subtotal      Int    @map("subtotal")
   shippingTotal Int    @default(0) @map("shipping_total")
@@ -479,23 +481,49 @@ model Order {
   billingAddressId  String  @map("billing_address_id")
   discountId        String? @map("discount_id")
 
+  // ADMIN_PANEL.md §4.2 — fulfillment status updates carry a tracking
+  // number; kept directly on Order (rather than only in OrderStatusEvent's
+  // free-text note) since it needs to stay visible/queryable regardless of
+  // how many further status transitions happen afterward.
+  trackingNumber String? @map("tracking_number")
+  carrier        String? @map("carrier")
+
   placedAt  DateTime? @map("placed_at")
   createdAt DateTime  @default(now()) @map("created_at")
   updatedAt DateTime  @updatedAt @map("updated_at")
 
-  user            User?      @relation(fields: [userId], references: [id], onDelete: Restrict)
-  shippingAddress Address    @relation("OrderShippingAddress", fields: [shippingAddressId], references: [id], onDelete: Restrict)
-  billingAddress  Address    @relation("OrderBillingAddress", fields: [billingAddressId], references: [id], onDelete: Restrict)
-  discount        Discount?  @relation(fields: [discountId], references: [id], onDelete: SetNull)
+  user            User?     @relation(fields: [userId], references: [id], onDelete: Restrict)
+  shippingAddress Address   @relation("OrderShippingAddress", fields: [shippingAddressId], references: [id], onDelete: Restrict)
+  billingAddress  Address   @relation("OrderBillingAddress", fields: [billingAddressId], references: [id], onDelete: Restrict)
+  discount        Discount? @relation(fields: [discountId], references: [id], onDelete: SetNull)
 
   items               OrderItem[]
-  statusEvents         OrderStatusEvent[]
-  payment              Payment?
-  discountRedemptions  DiscountRedemption[]
+  statusEvents        OrderStatusEvent[]
+  payment             Payment?
+  discountRedemptions DiscountRedemption[]
+  notes               OrderNote[]
 
   @@index([userId])
   @@index([status])
   @@map("orders")
+}
+
+/**
+ * Internal staff notes (ADMIN_PANEL.md §4.2) — append-only, never customer-visible, matches the OrderStatusEvent audit-trail pattern rather than a single overwritable text field.
+ */
+model OrderNote {
+  id          String @id @default(uuid())
+  orderId     String @map("order_id")
+  adminUserId String @map("admin_user_id")
+  body        String
+
+  createdAt DateTime @default(now()) @map("created_at")
+
+  order     Order     @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  adminUser AdminUser @relation(fields: [adminUserId], references: [id], onDelete: Restrict)
+
+  @@index([orderId])
+  @@map("order_notes")
 }
 
 model OrderItem {
@@ -528,7 +556,8 @@ model OrderStatusEvent {
 
   createdAt DateTime @default(now()) @map("created_at")
 
-  order Order @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  order     Order      @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  adminUser AdminUser? @relation(fields: [adminUserId], references: [id], onDelete: SetNull)
 
   @@index([orderId])
   @@map("order_status_events")
@@ -544,12 +573,12 @@ enum PaymentStatus {
 }
 
 model Payment {
-  id                     String        @id @default(uuid())
-  orderId                String        @unique @map("order_id")
-  stripePaymentIntentId  String        @unique @map("stripe_payment_intent_id")
-  status                 PaymentStatus @default(requires_action)
-  amount                 Int
-  currency               String        @default("USD") @db.Char(3)
+  id                    String        @id @default(uuid())
+  orderId               String        @unique @map("order_id")
+  stripePaymentIntentId String        @unique @map("stripe_payment_intent_id")
+  status                PaymentStatus @default(requires_action)
+  amount                Int
+  currency              String        @default("USD") @db.Char(3)
 
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
@@ -586,15 +615,15 @@ enum DiscountType {
 }
 
 model Discount {
-  id               String       @id @default(uuid())
-  code             String?      @unique
-  type             DiscountType
-  value            Int
-  startsAt         DateTime?    @map("starts_at")
-  endsAt           DateTime?    @map("ends_at")
-  usageLimit       Int?         @map("usage_limit")
-  perUserLimit     Int?         @map("per_user_limit")
-  minimumSubtotal  Int?         @map("minimum_subtotal")
+  id              String       @id @default(uuid())
+  code            String?      @unique
+  type            DiscountType
+  value           Int
+  startsAt        DateTime?    @map("starts_at")
+  endsAt          DateTime?    @map("ends_at")
+  usageLimit      Int?         @map("usage_limit")
+  perUserLimit    Int?         @map("per_user_limit")
+  minimumSubtotal Int?         @map("minimum_subtotal")
 
   createdAt DateTime @default(now()) @map("created_at")
 

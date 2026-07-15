@@ -193,6 +193,9 @@ importers:
       '@silonya/database':
         specifier: workspace:*
         version: link:../database
+      '@silonya/emails':
+        specifier: workspace:*
+        version: link:../emails
       '@silonya/utils':
         specifier: workspace:*
         version: link:../utils

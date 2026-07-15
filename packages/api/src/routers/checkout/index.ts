@@ -6,6 +6,7 @@ import { z } from "zod";
 import { getDefaultWarehouseId } from "../admin-catalog/shared";
 import { publicProcedure, router } from "../../trpc";
 import { getStripeClient } from "../../lib/stripe";
+import { siteUrl } from "../../lib/site-url";
 import { releaseReservation } from "../../services/inventory";
 import { CURRENCY, toAddressCreateInput, validateDiscountCode, variantLabel } from "./shared";
 
@@ -18,10 +19,6 @@ const addressInput = z.object({
   countryCode: z.string().trim().length(2),
   phone: z.string().trim().optional(),
 });
-
-function siteUrl(): string {
-  return process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000";
-}
 
 const MAX_RETRY_ON_ORDER_NUMBER_COLLISION = 3;
 

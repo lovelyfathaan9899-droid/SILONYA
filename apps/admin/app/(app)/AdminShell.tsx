@@ -1,7 +1,7 @@
 "use client";
 
 import { Button } from "@silonya/ui";
-import { LayoutGrid, Shirt } from "lucide-react";
+import { LayoutGrid, ShoppingBag, Shirt } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import type { ReactNode } from "react";
@@ -9,6 +9,7 @@ import { logoutAction } from "@/app/actions";
 
 const NAV_ITEMS = [
   { label: "Overview", href: "/", icon: LayoutGrid },
+  { label: "Orders", href: "/orders", icon: ShoppingBag },
   { label: "Products", href: "/products", icon: Shirt },
 ] as const;
 
@@ -37,7 +38,7 @@ export function AdminShell({ children, adminEmail, adminRole }: AdminShellProps)
         <nav className="flex-1 px-3 py-4">
           <ul className="flex flex-col gap-1">
             {NAV_ITEMS.map((item) => {
-              const active = pathname === item.href;
+              const active = item.href === "/" ? pathname === "/" : pathname.startsWith(item.href);
               return (
                 <li key={item.href}>
                   <Link

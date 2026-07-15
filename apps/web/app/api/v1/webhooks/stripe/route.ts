@@ -1,5 +1,11 @@
 import { signOrderAccessToken } from "@silonya/auth";
-import { getStripeClient, markOrderPaid, markOrderPaymentFailed } from "@silonya/api";
+import {
+  getStripeClient,
+  markOrderPaid,
+  markOrderPaymentFailed,
+  syncRefundFromWebhook,
+  toOrderEmailData,
+} from "@silonya/api";
 import { prisma } from "@silonya/database";
 import { sendOrderConfirmationEmail, sendPaymentFailedEmail } from "@silonya/emails";
 import { NextResponse } from "next/server";
@@ -74,6 +80,17 @@ export async function POST(request: Request) {
       break;
     }
 
+    case "charge.refunded": {
+      const charge = event.data.object;
+      const paymentIntentId =
+        typeof charge.payment_intent === "string" ? charge.payment_intent : null;
+      const latestRefund = charge.refunds?.data.at(-1);
+      if (paymentIntentId && latestRefund) {
+        await syncRefundFromWebhook(paymentIntentId, latestRefund.id, latestRefund.amount);
+      }
+      break;
+    }
+
     default:
       break;
   }
@@ -86,31 +103,9 @@ type FulfilledOrder = Awaited<ReturnType<typeof markOrderPaid>>;
 async function sendConfirmationEmail(order: FulfilledOrder): Promise<void> {
   if (!order.guestEmail) return;
   const token = await signOrderAccessToken({ orderId: order.id, email: order.guestEmail });
-  await sendOrderConfirmationEmail({
-    orderNumber: order.orderNumber,
-    guestEmail: order.guestEmail,
-    currency: order.currency,
-    subtotal: order.subtotal,
-    shippingTotal: order.shippingTotal,
-    taxTotal: order.taxTotal,
-    discountTotal: order.discountTotal,
-    grandTotal: order.grandTotal,
-    items: order.items.map((item) => ({
-      productNameSnapshot: item.productNameSnapshot,
-      variantLabelSnapshot: item.variantLabelSnapshot,
-      quantity: item.quantity,
-      lineTotal: item.lineTotal,
-    })),
-    shippingAddress: {
-      line1: order.shippingAddress.line1,
-      line2: order.shippingAddress.line2,
-      city: order.shippingAddress.city,
-      region: order.shippingAddress.region,
-      postalCode: order.shippingAddress.postalCode,
-      countryCode: order.shippingAddress.countryCode,
-    },
-    orderTrackingUrl: `${SITE_URL}/order/confirmation?token=${token}`,
-  });
+  const emailData = toOrderEmailData(order, `${SITE_URL}/order/confirmation?token=${token}`);
+  if (!emailData) return;
+  await sendOrderConfirmationEmail(emailData);
 }
 
 async function sendFailureEmail(order: FulfilledOrder): Promise<void> {

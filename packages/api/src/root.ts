@@ -1,5 +1,6 @@
 import { adminAuthRouter } from "./routers/admin-auth";
 import { adminCatalogRouter } from "./routers/admin-catalog";
+import { adminOrdersRouter } from "./routers/admin-orders";
 import { catalogRouter } from "./routers/catalog";
 import { checkoutRouter } from "./routers/checkout";
 import { router } from "./trpc";
@@ -10,6 +11,7 @@ import { router } from "./trpc";
 export const appRouter = router({
   adminAuth: adminAuthRouter,
   adminCatalog: adminCatalogRouter,
+  adminOrders: router(adminOrdersRouter),
   catalog: catalogRouter,
   checkout: checkoutRouter,
 });
