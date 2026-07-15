@@ -13,6 +13,8 @@ Defines how identity, sessions, and access control work across the customer stor
 
 ---
 
+> **Implementation status (Phase 6):** customer accounts (this section's Auth.js/OAuth flow) aren't built yet — checkout is guest-only, matching principle 2 above. Guest order access uses a signed, expiring token (order id + email — `packages/auth/src/order-access-token.ts`) rather than a login session, per ORDER_MANAGEMENT.md §4's documented guest path. Build this section when customer accounts become a scoped phase.
+
 ## 2. Customer Authentication
 
 ### 2.1 Supported Methods

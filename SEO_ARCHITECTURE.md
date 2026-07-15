@@ -48,6 +48,7 @@ Structured data is generated server-side from the same data contract that render
 /categories/{category-path}          Category browsing
 /search?q={query}                    Search results (noindex — dynamic query pages provide little unique SEO value)
 /account/*, /cart, /checkout          noindex, nofollow
+/order/confirmation, /orders/track    noindex, nofollow — order/address detail behind a signed access token
 ```
 
 - Slugs are human-readable, kebab-case, generated from product/collection names at creation time and **immutable once published** — changing a live product's slug breaks inbound links and search rankings, so slug edits after publish require an explicit redirect to be created (§6).

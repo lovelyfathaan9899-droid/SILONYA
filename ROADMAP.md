@@ -44,13 +44,16 @@ This document breaks development into sequential phases, each with a clear goal 
 - [x] Homepage, Product Listing Page (PLP, collection + category), Product Detail Page (PDP)
 - [x] Product cards, gallery, size/color selectors, stock status, wishlist button, search UI, empty/loading/error states (`packages/ui` Pattern/Section tiers)
 - [x] Core SEO implementation: SSR/SSG+ISR, JSON-LD (Product/BreadcrumbList/Organization), `sitemap.xml`, `robots.txt`, canonical URLs
-- [ ] Cart (drawer built; dedicated `/cart` page not built), guest and authenticated checkout
-- [ ] Stripe payment integration (Checkout flow), order confirmation, transactional emails
-- [ ] Basic admin: order management/fulfillment status (product/inventory management already exists from Phase 1)
+- [x] Real database provisioned (Neon) and migrated — runtime-verified: admin login, storefront SSR against live data
+- [x] Cart (`/cart` page + drawer), guest checkout (shipping/billing addresses, basic tax/shipping calculation, basic coupon codes)
+- [x] Stripe payment integration (Stripe Checkout, test mode), order creation, inventory deduction on payment success, order confirmation page, guest order tracking (order # + email)
+- [x] Transactional emails (order confirmation, payment failed) — React Email templates built; actual delivery is stubbed (logged) pending a Resend API key
+- [ ] Basic admin: order management/fulfillment status (product/inventory management already exists from Phase 1) — orders are created and paid correctly but have no admin UI yet
 - [ ] Core Web Vitals budgets measured on MVP templates (see PROJECT_RULES.md §7) — not yet run against a live deployment
 - [ ] Accessibility: WCAG 2.1 AA pass on all MVP flows — built to the standard, not yet audited
 - [ ] Security review before go-live (see PROJECT_RULES.md §8)
-- [ ] Real database provisioned (Neon) and migrated — storefront is code-complete but only ever run against an unreachable local Postgres URL; nothing in Phase 1 or 2 has been runtime-verified against live data yet
+- [ ] Customer accounts (Auth.js/OAuth) — checkout and order history are guest-only for now (AUTHENTICATION.md, ORDER_MANAGEMENT.md §4)
+- [ ] Redis/BullMQ — cart persistence and webhook/email processing run without a queue for now (DATABASE_ARCHITECTURE.md §3.4, PAYMENT_ARCHITECTURE.md §3)
 
 **Exit criteria:** A real customer can browse, purchase, and receive their order — in production, for the primary launch market/currency. — browsing is done; purchase flow is next.
 

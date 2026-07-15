@@ -1,16 +1,17 @@
 import { adminAuthRouter } from "./routers/admin-auth";
 import { adminCatalogRouter } from "./routers/admin-catalog";
 import { catalogRouter } from "./routers/catalog";
+import { checkoutRouter } from "./routers/checkout";
 import { router } from "./trpc";
 
 // API_SPECIFICATION.md §2 — routers are organized by domain and composed
-// here. `cart`/`checkout`/`account`/`auth` (customer) are added when
-// checkout/customer-accounts are built (explicitly out of scope for
-// ROADMAP.md's storefront-UI phase — see PHASE 5 notes in catalog.ts).
+// here. `account`/`auth` (customer) are added when customer accounts are
+// built — guest checkout only for now (ORDER_MANAGEMENT.md §4).
 export const appRouter = router({
   adminAuth: adminAuthRouter,
   adminCatalog: adminCatalogRouter,
   catalog: catalogRouter,
+  checkout: checkoutRouter,
 });
 
 export type AppRouter = typeof appRouter;

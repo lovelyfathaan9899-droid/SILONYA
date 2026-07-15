@@ -1,3 +1,3 @@
-import { baseConfig } from "@silonya/config/eslint/base";
+import { reactConfig } from "@silonya/config/eslint/react";
 
-export default baseConfig;
+export default reactConfig;

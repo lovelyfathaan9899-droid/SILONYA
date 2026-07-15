@@ -2,7 +2,7 @@
   "name": "@silonya/emails",
   "version": "0.0.0",
   "private": true,
-  "description": "Transactional email templates (ORDER_MANAGEMENT.md §9) used by the notification worker",
+  "description": "Transactional email templates (ORDER_MANAGEMENT.md §9) sent from the Stripe webhook handler",
   "type": "module",
   "exports": {
     ".": "./src/index.ts"
@@ -12,8 +12,17 @@
     "typecheck": "tsc --noEmit",
     "clean": "rm -rf .turbo node_modules"
   },
+  "dependencies": {
+    "@react-email/components": "^0.0.31",
+    "@react-email/render": "^1.0.3",
+    "@silonya/utils": "workspace:*",
+    "react": "^19.0.0",
+    "resend": "^4.0.1"
+  },
   "devDependencies": {
     "@silonya/config": "workspace:*",
+    "@types/node": "^22.10.0",
+    "@types/react": "^19.0.0",
     "eslint": "^9.17.0",
     "typescript": "^5.7.0"
   }

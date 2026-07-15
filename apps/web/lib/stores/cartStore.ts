@@ -17,27 +17,31 @@ export interface CartLine {
 interface CartState {
   lines: CartLine[];
   isOpen: boolean;
+  discountCode: string | null;
   open: () => void;
   close: () => void;
   addLine: (line: Omit<CartLine, "quantity">, quantity?: number) => void;
   removeLine: (variantId: string) => void;
   setQuantity: (variantId: string, quantity: number) => void;
+  setDiscountCode: (code: string | null) => void;
+  clear: () => void;
 }
 
 /**
- * Client-only cart state (TECH_STACK.md §2 — "Zustand... for cart/UI state
- * only"). No server persistence yet: there is no real checkout in this
- * phase (explicitly out of scope), so nothing here needs to survive past
- * the browser — CartItem/Cart in DATABASE_ARCHITECTURE.md §3.4 are wired up
- * when checkout is actually built, at which point this store starts
- * syncing to `cart.addItem` etc. (API_SPECIFICATION.md §2) instead of only
- * writing to localStorage.
+ * Client-only pre-checkout cart state (TECH_STACK.md §2 — "Zustand... for
+ * cart/UI state only"). This is the browsing-time cart; at checkout,
+ * `checkout.createIntent` (packages/api) re-validates every line against
+ * live data and creates the durable Postgres Cart/Order rows
+ * (DATABASE_ARCHITECTURE.md §3.4) — nothing here is trusted server-side,
+ * only used to build that request. `clear()` is called once an order is
+ * successfully placed.
  */
 export const useCartStore = create<CartState>()(
   persist(
     (set) => ({
       lines: [],
       isOpen: false,
+      discountCode: null,
       open: () => {
         set({ isOpen: true });
       },
@@ -68,6 +72,12 @@ export const useCartStore = create<CartState>()(
               ? state.lines.filter((l) => l.variantId !== variantId)
               : state.lines.map((l) => (l.variantId === variantId ? { ...l, quantity } : l)),
         }));
+      },
+      setDiscountCode: (code) => {
+        set({ discountCode: code });
+      },
+      clear: () => {
+        set({ lines: [], discountCode: null, isOpen: false });
       },
     }),
     { name: "silonya-cart" },

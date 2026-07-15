@@ -20,9 +20,12 @@
     "@silonya/api": "workspace:*",
     "@silonya/auth": "workspace:*",
     "@silonya/database": "workspace:*",
+    "@silonya/emails": "workspace:*",
+    "@trpc/client": "^11.0.0",
     "@trpc/server": "^11.0.0",
     "lucide-react": "^0.469.0",
     "server-only": "^0.0.1",
+    "superjson": "^2.2.2",
     "zustand": "^5.0.2"
   },
   "devDependencies": {

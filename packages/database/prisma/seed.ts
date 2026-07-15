@@ -1,6 +1,7 @@
 import { hash } from "@node-rs/argon2";
 import { PrismaClient } from "../generated/client/index.js";
 import { seedCatalog } from "./seed-catalog";
+import { seedDiscounts } from "./seed-discounts";
 
 // Seeds the RBAC baseline (roles + permissions, AUTHENTICATION.md §4) and
 // one super_admin account for local development. Not run in production —
@@ -99,6 +100,7 @@ async function main() {
   }
 
   await seedCatalog(prisma);
+  await seedDiscounts(prisma);
 }
 
 main()

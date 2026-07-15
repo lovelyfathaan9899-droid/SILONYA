@@ -56,11 +56,13 @@ Endpoint: `POST /api/v1/webhooks/stripe` (API_SPECIFICATION.md §3).
 5. Enqueue event to BullMQ for async processing (route handler returns 200 fast, Stripe's retry
    window is generous but we don't want to hold the connection open for business logic)
 6. Worker processes event by type:
-     payment_intent.succeeded    → Order.status = paid, finalize inventory (ORDER_MANAGEMENT.md §3)
+     checkout.session.completed / payment_intent.succeeded → Order.status = paid, finalize inventory (ORDER_MANAGEMENT.md §3)
      payment_intent.payment_failed → Order.status = payment_failed, notify customer
      charge.refunded              → sync Refund record, update Order status
      charge.dispute.created        → flag order, alert admin team (chargeback risk)
 ```
+
+> **Implementation status (Phase 6):** step 5's BullMQ enqueue doesn't exist yet (no Redis provisioned) — the route handler (`apps/web/app/api/v1/webhooks/stripe/route.ts`) processes the event synchronously in-request instead, calling `markOrderPaid`/`markOrderPaymentFailed` (`packages/api/src/services/order-fulfillment.ts`) directly. Steps 1-4 and the idempotency/signature guarantees are unchanged; only the queue hop is deferred. Checkout uses **Stripe Checkout Sessions** (TECH_STACK.md's "Checkout for launch" guidance), so the primary success signal is `checkout.session.completed`, not a bare `payment_intent.succeeded`.
 
 **Signature verification is non-negotiable** — an unverified webhook is a forgeable "mark this order paid" endpoint, so every handler rejects unsigned/invalid requests before any processing.
 
@@ -89,6 +91,8 @@ Full workflow context in [ORDER_MANAGEMENT.md](./ORDER_MANAGEMENT.md) §7. Payme
 
 - **Stripe Tax** computes tax at `checkout.createIntent` time based on the shipping address and product tax category — SILONYA does not maintain its own tax rate tables, avoiding the compliance burden of tracking global tax law directly.
 - **Multi-currency (Phase 4):** Stripe natively supports charging in the customer's local currency; `Order.currency` and `Payment.currency` already exist in the schema (DATABASE_ARCHITECTURE.md) to support this without a schema change when Phase 4 activates it.
+
+> **Implementation status (Phase 6):** Stripe Tax requires origin-address/tax-registration setup in the Stripe dashboard that isn't in place on this test account, so `checkout.createIntent` (`packages/api/src/routers/checkout/index.ts`) computes tax and shipping with a basic, explicitly-documented flat calculation instead (`packages/utils/src/order.ts` — flat shipping rate with a free-shipping threshold, flat percentage tax for one country). Swap the implementation behind `calculateShipping`/`calculateTax`, not their call sites, once Stripe Tax is configured.
 
 ---
 

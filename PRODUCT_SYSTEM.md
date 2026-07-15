@@ -63,6 +63,8 @@ Payment fails/abandons  → quantityReserved -= qty (release, via expiry job)
 
 A BullMQ scheduled job sweeps expired reservations every minute, releasing stock held by abandoned checkouts back into availability — preventing "phantom sold out" states.
 
+> **Implementation status (Phase 6):** this sweep job doesn't exist yet (no Redis/BullMQ provisioned) — a checkout abandoned before payment completes (no webhook ever arrives) leaves its reservation in place indefinitely instead of releasing after ~15 minutes. Deterministic release still works correctly on `payment_intent.payment_failed`/`checkout.session.async_payment_failed` and when Stripe Checkout Session creation itself fails (`packages/api/src/routers/checkout/index.ts`'s catch block). Add the sweep job once queue infrastructure exists.
+
 ### 4.3 Oversell Prevention
 
 Conditional update pattern (DATABASE_ARCHITECTURE.md §5): `UPDATE inventory SET quantityReserved = quantityReserved + :qty WHERE variantId = :id AND quantityOnHand - quantityReserved >= :qty`. Zero rows affected = insufficient stock, surfaced to the user immediately with a specific `INVENTORY_INSUFFICIENT` error code (API_SPECIFICATION.md §4), not a generic failure.

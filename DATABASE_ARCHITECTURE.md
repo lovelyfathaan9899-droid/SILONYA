@@ -185,6 +185,8 @@ Available-to-sell = `quantityOnHand - quantityReserved`, always computed server-
 
 **Cart** — one active cart per user (or anonymous session token for guests); primary store is **Redis** for speed, with a Postgres row created at checkout-intent time for durability and analytics.
 
+> **Implementation status (Phase 6):** no Redis is provisioned yet, so the pre-checkout cart lives entirely client-side (Zustand + localStorage, `apps/web/lib/stores/cartStore.ts`) instead of a Redis-backed server cart — functionally the same "not durable until checkout" behavior this section already describes, just without a server round-trip while browsing. The Postgres `Cart`/`CartItem` row is still created exactly at checkout-intent time as specified here. Swap in Redis for the pre-checkout cart when it's provisioned; the checkout-time contract doesn't change.
+
 | Field        | Type                                    |
 | ------------ | --------------------------------------- |
 | id           | UUID PK                                 |

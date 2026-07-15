@@ -151,9 +151,14 @@ export function CartDrawer({
               <p className="text-stone mb-4 font-sans text-xs">
                 Shipping and taxes calculated at checkout.
               </p>
-              <Button className="w-full" disabled>
-                Checkout — coming soon
-              </Button>
+              <div className="flex flex-col gap-2">
+                <Button asChild className="w-full">
+                  <Link href="/checkout">Checkout</Link>
+                </Button>
+                <Button asChild variant="secondary" className="w-full">
+                  <Link href="/cart">View bag</Link>
+                </Button>
+              </div>
             </div>
           ) : null}
         </DialogPrimitive.Content>
