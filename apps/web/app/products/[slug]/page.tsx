@@ -4,6 +4,8 @@ import Link from "next/link";
 import { Breadcrumbs, ProductGallery, Section } from "@silonya/ui";
 import { ProductGridSection } from "@/components/ProductGridSection";
 import { ProductPurchasePanel } from "@/components/ProductPurchasePanel";
+import { RecentlyViewedTracker } from "@/components/RecentlyViewedTracker";
+import { ReviewsSection } from "@/components/ReviewsSection";
 import { createServerCaller } from "@/lib/trpc-caller";
 import { breadcrumbListJsonLd, toJsonLdString } from "@/lib/json-ld";
 
@@ -76,6 +78,7 @@ export default async function ProductPage({ params }: PageProps) {
 
   return (
     <Section spacing="lg">
+      <RecentlyViewedTracker productId={product.id} />
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: toJsonLdString(jsonLd) }}
@@ -103,6 +106,8 @@ export default async function ProductPage({ params }: PageProps) {
         <h2 className="font-display text-ink text-xl">Details</h2>
         <p className="text-stone mt-3 font-sans text-sm">{product.description}</p>
       </div>
+
+      <ReviewsSection productId={product.id} />
 
       {product.related.length > 0 ? (
         <div className="mt-20">

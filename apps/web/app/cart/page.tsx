@@ -1,12 +1,13 @@
 "use client";
 
-import { Button, EmptyState, Icon, Input, PriceDisplay, Section } from "@silonya/ui";
+import { Button, EmptyState, Icon, Input, PriceDisplay, Section, toast } from "@silonya/ui";
 import { formatPriceForDisplay } from "@silonya/utils";
 import { Minus, Plus, X } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
 import { useState } from "react";
 import { useCartStore } from "@/lib/stores/cartStore";
+import { useIsLoggedIn } from "@/lib/customer-session-client";
 import { trpcClient } from "@/lib/trpc-client";
 
 export default function CartPage() {
@@ -15,6 +16,17 @@ export default function CartPage() {
   const removeLine = useCartStore((state) => state.removeLine);
   const discountCode = useCartStore((state) => state.discountCode);
   const setDiscountCode = useCartStore((state) => state.setDiscountCode);
+  const loggedIn = useIsLoggedIn();
+
+  async function saveForLater(variantId: string) {
+    try {
+      await trpcClient.account.wishlist.add.mutate({ variantId, savedForLater: true });
+      removeLine(variantId);
+      toast({ title: "Saved for later" });
+    } catch {
+      toast({ title: "Couldn't save item", variant: "error" });
+    }
+  }
 
   const [codeInput, setCodeInput] = useState(discountCode ?? "");
   const [discountPreview, setDiscountPreview] = useState<{
@@ -129,6 +141,15 @@ export default function CartPage() {
                     <Icon icon={Plus} size={14} />
                   </button>
                 </div>
+                {loggedIn ? (
+                  <button
+                    type="button"
+                    onClick={() => void saveForLater(line.variantId)}
+                    className="text-stone hover:text-ink w-fit font-sans text-xs underline"
+                  >
+                    Save for later
+                  </button>
+                ) : null}
               </div>
             </div>
           ))}

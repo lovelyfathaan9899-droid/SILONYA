@@ -1,4 +1,4 @@
-import { ADMIN_ACCESS_TOKEN_COOKIE, verifyAccessToken } from "@silonya/auth";
+import { ACCESS_TOKEN_COOKIE, ADMIN_ACCESS_TOKEN_COOKIE, verifyAccessToken } from "@silonya/auth";
 
 export interface AdminSessionContext {
   userId: string;
@@ -6,8 +6,14 @@ export interface AdminSessionContext {
   role: string;
 }
 
+export interface CustomerSessionContext {
+  userId: string;
+  sessionId: string;
+}
+
 export interface Context {
   adminSession: AdminSessionContext | null;
+  customerSession: CustomerSessionContext | null;
 }
 
 function parseCookies(header: string): Record<string, string> {
@@ -31,6 +37,7 @@ function parseCookies(header: string): Record<string, string> {
 export async function createContext({ req }: { req: Request }): Promise<Context> {
   const cookies = parseCookies(req.headers.get("cookie") ?? "");
   const adminToken = cookies[ADMIN_ACCESS_TOKEN_COOKIE];
+  const customerToken = cookies[ACCESS_TOKEN_COOKIE];
 
   let adminSession: AdminSessionContext | null = null;
   if (adminToken) {
@@ -40,5 +47,13 @@ export async function createContext({ req }: { req: Request }): Promise<Context>
     }
   }
 
-  return { adminSession };
+  let customerSession: CustomerSessionContext | null = null;
+  if (customerToken) {
+    const payload = await verifyAccessToken(customerToken);
+    if (payload && !payload.role) {
+      customerSession = { userId: payload.sub, sessionId: payload.sid };
+    }
+  }
+
+  return { adminSession, customerSession };
 }

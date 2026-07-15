@@ -13,7 +13,7 @@ Defines how identity, sessions, and access control work across the customer stor
 
 ---
 
-> **Implementation status (Phase 6):** customer accounts (this section's Auth.js/OAuth flow) aren't built yet — checkout is guest-only, matching principle 2 above. Guest order access uses a signed, expiring token (order id + email — `packages/auth/src/order-access-token.ts`) rather than a login session, per ORDER_MANAGEMENT.md §4's documented guest path. Build this section when customer accounts become a scoped phase.
+> **Implementation status (Phase 8+9):** email+password customer accounts (§2.1–2.4) are implemented — registration, login, logout, password reset/change, email verification, profile/address management, order history, and database-backed wishlist all exist (`packages/api/src/routers/customer-auth.ts`, `account/`). Google/Apple OAuth (§2.1, §2.5) remain unimplemented — they need real provider credentials (client id/secret) that don't exist in this environment, so `AuthIdentity`/`AuthProvider` are modeled in the schema but no OAuth callback route exists yet. Guest checkout stays fully first-class per principle 2: `checkout.createIntent` still accepts unauthenticated requests, and guest order access still uses the signed order-access token (`packages/auth/src/order-access-token.ts`) rather than a login session. On registration, any prior guest orders matching the new account's email are retroactively linked (`Order.userId` set) — see ORDER_MANAGEMENT.md §4.
 
 ## 2. Customer Authentication
 

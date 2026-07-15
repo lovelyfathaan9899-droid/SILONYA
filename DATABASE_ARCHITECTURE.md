@@ -52,17 +52,23 @@ AdminUser ──1:N── AdminSession
 
 **User**
 
-| Field                             | Type        | Constraints                   |
-| --------------------------------- | ----------- | ----------------------------- |
-| id                                | UUID        | PK                            |
-| email                             | citext      | unique, not null              |
-| passwordHash                      | text        | nullable (null if OAuth-only) |
-| firstName / lastName              | text        | nullable                      |
-| phone                             | text        | nullable                      |
-| emailVerifiedAt                   | timestamptz | nullable                      |
-| marketingOptIn                    | boolean     | default false                 |
-| defaultAddressId                  | UUID        | FK → Address, nullable        |
-| createdAt / updatedAt / deletedAt | timestamptz |                               |
+| Field                             | Type        | Constraints                                                                                                              |
+| --------------------------------- | ----------- | ------------------------------------------------------------------------------------------------------------------------ |
+| id                                | UUID        | PK                                                                                                                       |
+| email                             | citext      | unique, not null                                                                                                         |
+| passwordHash                      | text        | nullable (null if OAuth-only)                                                                                            |
+| firstName / lastName              | text        | nullable                                                                                                                 |
+| phone                             | text        | nullable                                                                                                                 |
+| emailVerifiedAt                   | timestamptz | nullable                                                                                                                 |
+| marketingOptIn                    | boolean     | default false                                                                                                            |
+| defaultAddressId                  | UUID        | FK → Address, nullable — superseded by the two fields below, kept for backward compatibility, unused by application code |
+| defaultShippingAddressId          | UUID        | FK → Address, nullable (Phase 8+9 — split shipping/billing defaults)                                                     |
+| defaultBillingAddressId           | UUID        | FK → Address, nullable (Phase 8+9)                                                                                       |
+| createdAt / updatedAt / deletedAt | timestamptz |                                                                                                                          |
+
+**VerificationToken** (Phase 8+9) — single-use, time-limited tokens for password reset (15 min) and email verification (24h): `userId`, `type`(`password_reset`,`email_verification`), `tokenHash` (unique, hashed the same way as `Session.refreshTokenHash`), `expiresAt`, `usedAt`.
+
+**RecentlyViewed** (Phase 8+9) — `userId`, `productId`, `viewedAt`, unique(`userId`,`productId`). Signed-in only; guests get a local-only (localStorage) version, matching the pre-account cart/wishlist pattern.
 
 **AuthIdentity** (supports multiple OAuth providers per user)
 
@@ -281,13 +287,17 @@ Full order lifecycle, reservation, and refund workflows: [ORDER_MANAGEMENT.md](.
 
 **DiscountRedemption** — one row per use, enforces `perUserLimit`/`usageLimit` via count query inside the checkout transaction.
 
+**DiscountEligibility** (Phase 8+9) — `(discountId, userId)` composite PK. Presence of any row restricts a Discount to those users (customer-specific coupons); a Discount with no rows stays available to everyone, unchanged.
+
+**GiftCard** / **GiftCardTransaction** (Phase 8+9) — stored-value balance, redeemed against the order grand total like a partial payment method rather than a line-item price reduction (kept as `Order.giftCardTotal`, separate from `discountTotal`). `GiftCardTransaction` is an append-only ledger (`issued`/`redeemed`/`refunded`/`adjusted`); `GiftCard.currentBalance` is a denormalized running total kept in sync inside the same transaction as every ledger write.
+
 ---
 
-### 3.7 Reviews & Wishlist (Phase 3)
+### 3.7 Reviews & Wishlist (Phase 8+9 — implemented)
 
-**Review**: id, productId (FK), userId (FK), orderId (FK, proves verified purchase), rating (1–5), title, body, status(`pending`,`published`,`rejected`), createdAt.
+**Review**: id, productId (FK), userId (FK), orderId (FK, proves verified purchase), rating (1–5), title, body, status(`pending`,`published`,`rejected`), createdAt. **ReviewMedia** (Phase 8+9) mirrors `ProductMedia`'s shape for review images.
 
-**Wishlist / WishlistItem**: standard 1:N, unique(`userId`,`variantId`) on the item table.
+**Wishlist / WishlistItem**: standard 1:N, unique(`userId`,`variantId`) on the item table. `WishlistItem.savedForLater` (Phase 8+9) reuses this table for "save for later" — moving a cart line there is "remove from cart, add here with the flag set" rather than a parallel table.
 
 ---
 

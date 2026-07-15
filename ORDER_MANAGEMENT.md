@@ -61,7 +61,7 @@ Transitions triggered by: customer action (cancel while `pending_payment`), Stri
 
 - Guest orders store `guestEmail` directly on `Order`; no `User` row is created.
 - Order status/tracking for guests is accessed via a signed, expiring lookup link (order number + email) sent in the confirmation email — no password required, no permanent account forced.
-- If a guest later creates an account with the same email, past guest orders are linked retroactively (`Order.userId` backfilled) after email ownership is verified — visible in account order history from that point on.
+- If a guest later creates an account with the same email, past guest orders are linked retroactively (`Order.userId` backfilled) after email ownership is verified — visible in account order history from that point on. **Implemented (Phase 8+9):** `customerAuth.register` does this backfill in the same transaction as account creation (case-insensitive email match against `Order.guestEmail`); "email ownership verified" here means the registrant proved control of the address by successfully creating the password-protected account with it, not a separate confirmation step.
 
 ---
 

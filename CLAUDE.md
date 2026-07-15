@@ -28,9 +28,9 @@ If a task conflicts with one of these documents, flag the conflict to the user r
 
 ## Current Project Status
 
-**Phase 0 — Documentation.** As of the last update to this file, no application code exists yet. Check [ROADMAP.md](./ROADMAP.md) for the current phase before assuming scaffolding, schema, or components already exist — verify against the actual repository state rather than trusting this file's memory of it, since this file is not guaranteed to be updated the moment the phase changes.
+**Phase 2/3 (in progress) — MVP Storefront + Growth Features.** The monorepo, admin catalog/order/customer/review/discount/gift-card management, guest+account checkout (Stripe test mode), and the customer-facing storefront (browsing, accounts, wishlist, reviews, coupons, gift cards) are all built and runtime-verified against a real Neon Postgres database. Check [ROADMAP.md](./ROADMAP.md) for the authoritative, up-to-date checklist of what's done vs. outstanding per phase — verify against the actual repository state rather than trusting this file's memory of it, since this file is not guaranteed to be updated the moment the phase changes. Notable gaps as of the last update: Meilisearch (still Postgres `ILIKE`), Google/Apple OAuth (needs real provider credentials), Redis/BullMQ (synchronous processing instead), Resend (email sending stubbed/logged pending an API key), Core Web Vitals/accessibility audits, and a pre-launch security review.
 
-**Standing rule:** do not scaffold or write application code (including boilerplate, config, or "just a starting point" code) until the user explicitly confirms the documentation phase is approved and asks for implementation to begin.
+**Standing rule:** the documentation-only gate has passed — application code is expected. Still check the roadmap phase before building something out of order (e.g., a Phase 4 multi-currency feature while Phase 2 exit criteria remain open).
 
 ---
 

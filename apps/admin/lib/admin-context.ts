@@ -14,12 +14,13 @@ import { cache } from "react";
 export const getAdminContext = cache(async (): Promise<Context> => {
   const cookieStore = await cookies();
   const token = cookieStore.get(ADMIN_ACCESS_TOKEN_COOKIE)?.value;
-  if (!token) return { adminSession: null };
+  if (!token) return { adminSession: null, customerSession: null };
 
   const payload = await verifyAccessToken(token);
-  if (!payload?.role) return { adminSession: null };
+  if (!payload?.role) return { adminSession: null, customerSession: null };
 
   return {
     adminSession: { userId: payload.sub, sessionId: payload.sid, role: payload.role },
+    customerSession: null,
   };
 });

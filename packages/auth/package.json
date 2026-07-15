@@ -16,6 +16,9 @@
   "dependencies": {
     "@node-rs/argon2": "^2.0.2",
     "@silonya/database": "workspace:*",
+    "@zxcvbn-ts/core": "^3.0.4",
+    "@zxcvbn-ts/language-common": "^3.0.4",
+    "@zxcvbn-ts/language-en": "^3.0.2",
     "jose": "^5.9.6"
   },
   "devDependencies": {

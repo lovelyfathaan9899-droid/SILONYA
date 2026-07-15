@@ -48,11 +48,11 @@ This document breaks development into sequential phases, each with a clear goal 
 - [x] Cart (`/cart` page + drawer), guest checkout (shipping/billing addresses, basic tax/shipping calculation, basic coupon codes)
 - [x] Stripe payment integration (Stripe Checkout, test mode), order creation, inventory deduction on payment success, order confirmation page, guest order tracking (order # + email)
 - [x] Transactional emails (order confirmation, payment failed) — React Email templates built; actual delivery is stubbed (logged) pending a Resend API key
-- [ ] Basic admin: order management/fulfillment status (product/inventory management already exists from Phase 1) — orders are created and paid correctly but have no admin UI yet
+- [x] Basic admin: order management/fulfillment status (list/detail, status transitions, refunds, notes)
 - [ ] Core Web Vitals budgets measured on MVP templates (see PROJECT_RULES.md §7) — not yet run against a live deployment
 - [ ] Accessibility: WCAG 2.1 AA pass on all MVP flows — built to the standard, not yet audited
 - [ ] Security review before go-live (see PROJECT_RULES.md §8)
-- [ ] Customer accounts (Auth.js/OAuth) — checkout and order history are guest-only for now (AUTHENTICATION.md, ORDER_MANAGEMENT.md §4)
+- [x] Customer accounts (email+password) — registration, login, password reset/change, email verification, profile, saved addresses with default shipping/billing, order history, database-backed wishlist, recently viewed (AUTHENTICATION.md, ORDER_MANAGEMENT.md §4). Google/Apple OAuth deferred — needs real provider credentials.
 - [ ] Redis/BullMQ — cart persistence and webhook/email processing run without a queue for now (DATABASE_ARCHITECTURE.md §3.4, PAYMENT_ARCHITECTURE.md §3)
 
 **Exit criteria:** A real customer can browse, purchase, and receive their order — in production, for the primary launch market/currency. — browsing is done; purchase flow is next.
@@ -63,14 +63,14 @@ This document breaks development into sequential phases, each with a clear goal 
 
 **Goal:** Deepen conversion, retention, and merchandising capability now that the core loop works.
 
-- Search (Meilisearch) with faceted filtering
-- Wishlists / saved items
-- Product reviews & ratings
-- Editorial/content pages (lookbooks, brand storytelling) via a lightweight CMS layer
-- Email marketing integration (abandoned cart, post-purchase flows) via Resend + a marketing ESP
-- Personalized recommendations ("You may also like") — rules-based first, ML-based later
-- Discount codes & promotions engine
-- Customer account enhancements: order history, returns initiation
+- [ ] Search (Meilisearch) with faceted filtering — still Postgres `ILIKE` (catalog.ts's documented placeholder)
+- [x] Wishlists / saved items — database-backed (`account.wishlist`), plus "save for later" from the cart
+- [x] Product reviews & ratings — purchase-verified, moderation queue, review images architecture
+- [ ] Editorial/content pages (lookbooks, brand storytelling) via a lightweight CMS layer
+- [ ] Email marketing integration (abandoned cart, post-purchase flows) via a marketing ESP — transactional account/coupon/review-reminder emails exist (stubbed pending Resend); campaign-style marketing automation does not
+- [x] Personalized recommendations ("You may also like") — related (category-based), trending/best-sellers (real order-data aggregation), and a first-pass purchase-history-based `recommended` query; rules-based, not ML
+- [x] Discount codes & promotions engine — percentage/fixed/free-shipping, expiry, usage limits (global + per-customer), customer-specific coupons, automatic (code-less) discounts, gift cards with redemption and balance tracking
+- [x] Customer account enhancements: order history, order detail/tracking — returns initiation still out of scope
 
 **Exit criteria:** Repeat purchase rate and engagement metrics become trackable and improvable; the platform supports marketing-led growth, not just direct navigation.
 

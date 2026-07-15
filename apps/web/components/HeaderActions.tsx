@@ -1,9 +1,11 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Search, ShoppingBag } from "lucide-react";
+import { Search, ShoppingBag, User } from "lucide-react";
 import { CartDrawer, Icon, SearchPalette, ThemeToggle, type SearchResult } from "@silonya/ui";
+import Link from "next/link";
 import { useCartCount, useCartStore } from "@/lib/stores/cartStore";
+import { useIsLoggedIn } from "@/lib/customer-session-client";
 
 interface SearchResponse {
   results: SearchResult[];
@@ -16,6 +18,7 @@ interface SearchResponse {
  * too). Rendered as one client island inside Header's `actions` slot.
  */
 export function HeaderActions() {
+  const loggedIn = useIsLoggedIn();
   const cartCount = useCartCount();
   const cartOpen = useCartStore((state) => state.isOpen);
   const cartLines = useCartStore((state) => state.lines);
@@ -61,6 +64,14 @@ export function HeaderActions() {
   return (
     <>
       <ThemeToggle />
+
+      <Link
+        href={loggedIn ? "/account" : "/login"}
+        aria-label={loggedIn ? "Your account" : "Sign in"}
+        className="text-ink focus-visible:ring-ink flex h-11 w-11 items-center justify-center focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2"
+      >
+        <Icon icon={User} size={20} />
+      </Link>
 
       <button
         type="button"

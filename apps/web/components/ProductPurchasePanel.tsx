@@ -10,7 +10,10 @@ import {
   WishlistButton,
 } from "@silonya/ui";
 import { useCartStore } from "@/lib/stores/cartStore";
+import { useCompareStore } from "@/lib/stores/compareStore";
 import { useWishlistStore } from "@/lib/stores/wishlistStore";
+import { useIsLoggedIn } from "@/lib/customer-session-client";
+import { trpcClient } from "@/lib/trpc-client";
 
 interface OptionValue {
   id: string;
@@ -121,11 +124,30 @@ export function ProductPurchasePanel({
   const addLine = useCartStore((state) => state.addLine);
   const wishlisted = useWishlistStore((state) => state.has(productId));
   const toggleWishlist = useWishlistStore((state) => state.toggle);
+  const loggedIn = useIsLoggedIn();
+
+  const compared = useCompareStore((state) => state.has(productId));
+  const toggleCompare = useCompareStore((state) => state.toggle);
 
   const fallbackPrice = Math.min(...variants.map((v) => v.price));
   const price = selectedVariant?.price ?? fallbackPrice;
   const compareAtPrice = selectedVariant?.compareAtPrice ?? null;
   const available = selectedVariant?.available ?? false;
+
+  function handleWishlistToggle() {
+    toggleWishlist(productId);
+    // Database-backed wishlist sync for signed-in customers (SHOPPING
+    // FEATURES) — the local store stays the source of truth for the
+    // anonymous heart-button UX either way.
+    if (loggedIn && selectedVariant) {
+      const mutation = wishlisted
+        ? trpcClient.account.wishlist.remove.mutate({ variantId: selectedVariant.id })
+        : trpcClient.account.wishlist.add.mutate({ variantId: selectedVariant.id });
+      mutation.catch(() => {
+        // Best-effort sync — the local wishlist toggle already succeeded.
+      });
+    }
+  }
 
   return (
     <div className="flex flex-col gap-6">
@@ -139,12 +161,25 @@ export function ProductPurchasePanel({
             className="mt-2 text-lg"
           />
         </div>
-        <WishlistButton
-          active={wishlisted}
-          onToggle={() => {
-            toggleWishlist(productId);
-          }}
-        />
+        <div className="flex items-center gap-2">
+          <WishlistButton active={wishlisted} onToggle={handleWishlistToggle} />
+          <Button
+            variant="secondary"
+            size="sm"
+            onClick={() => {
+              toggleCompare({
+                productId,
+                slug,
+                name,
+                price,
+                currency,
+                imageUrl: media[0]?.url ?? null,
+              });
+            }}
+          >
+            {compared ? "Added to compare" : "Compare"}
+          </Button>
+        </div>
       </div>
 
       {options.map((option) => {

@@ -1,7 +1,7 @@
 import { prisma } from "@silonya/database";
 import { TRPCError } from "@trpc/server";
 import { z } from "zod";
-import { publicProcedure, router } from "../trpc";
+import { customerProcedure, publicProcedure, router } from "../trpc";
 
 const SORT = z.enum(["recommended", "newest", "price-asc", "price-desc"]);
 
@@ -61,6 +61,50 @@ function orderByForSort(sort: z.infer<typeof SORT>) {
       // that's added (an additive, non-breaking schema change).
       return { publishedAt: "desc" as const };
   }
+}
+
+/** Product ids ranked by units sold (completed orders only), optionally windowed — shared by `trending` (30-day window) and `bestSellers` (all-time). Raw SQL: aggregating across three joined tables by summed quantity isn't a single Prisma groupBy. */
+async function topSellingProductIds(limit: number, sinceDate?: Date): Promise<string[]> {
+  const rows = sinceDate
+    ? await prisma.$queryRaw<{ id: string }[]>`
+        SELECT p.id
+        FROM order_items oi
+        JOIN product_variants pv ON pv.id = oi.variant_id
+        JOIN products p ON p.id = pv.product_id
+        JOIN orders o ON o.id = oi.order_id
+        WHERE p.status = 'active' AND p.deleted_at IS NULL
+          AND o.status NOT IN ('pending_payment', 'payment_failed', 'cancelled')
+          AND o.created_at >= ${sinceDate}
+        GROUP BY p.id
+        ORDER BY SUM(oi.quantity) DESC
+        LIMIT ${limit}
+      `
+    : await prisma.$queryRaw<{ id: string }[]>`
+        SELECT p.id
+        FROM order_items oi
+        JOIN product_variants pv ON pv.id = oi.variant_id
+        JOIN products p ON p.id = pv.product_id
+        JOIN orders o ON o.id = oi.order_id
+        WHERE p.status = 'active' AND p.deleted_at IS NULL
+          AND o.status NOT IN ('pending_payment', 'payment_failed', 'cancelled')
+        GROUP BY p.id
+        ORDER BY SUM(oi.quantity) DESC
+        LIMIT ${limit}
+      `;
+  return rows.map((r) => r.id);
+}
+
+async function productsByIds(ids: string[]) {
+  if (ids.length === 0) return [];
+  const products = await prisma.product.findMany({
+    where: { id: { in: ids } },
+    include: productListInclude,
+  });
+  const byId = new Map(products.map((p) => [p.id, p]));
+  return ids
+    .map((id) => byId.get(id))
+    .filter((p): p is NonNullable<typeof p> => !!p)
+    .map(toCardSummary);
 }
 
 export const catalogRouter = router({
@@ -217,6 +261,72 @@ export const catalogRouter = router({
         take: input.limit,
         include: productListInclude,
       });
+
+      return products.map(toCardSummary);
+    }),
+
+  /** CUSTOMER EXPERIENCE — trending: most units sold in the last 30 days. Data-driven, additive to (not a replacement for) the curated "best-sellers" Collection already used on the homepage. */
+  trending: publicProcedure
+    .input(z.object({ limit: z.number().int().min(1).max(24).default(8) }))
+    .query(async ({ input }) => {
+      const since = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
+      return productsByIds(await topSellingProductIds(input.limit, since));
+    }),
+
+  /** CUSTOMER EXPERIENCE — best sellers: most units sold all-time, computed from real order data. */
+  bestSellers: publicProcedure
+    .input(z.object({ limit: z.number().int().min(1).max(24).default(8) }))
+    .query(async ({ input }) => {
+      return productsByIds(await topSellingProductIds(input.limit));
+    }),
+
+  /**
+   * CUSTOMER EXPERIENCE — "personalized recommendations architecture":
+   * products from categories the signed-in customer has previously bought
+   * from, excluding what they already own. Falls back to sitewide trending
+   * for a customer with no purchase history yet.
+   */
+  recommended: customerProcedure
+    .input(z.object({ limit: z.number().int().min(1).max(24).default(8) }))
+    .query(async ({ ctx, input }) => {
+      const purchasedItems = await prisma.orderItem.findMany({
+        where: {
+          order: {
+            userId: ctx.customerSession.userId,
+            status: { notIn: ["pending_payment", "payment_failed", "cancelled"] },
+          },
+        },
+        select: { variant: { select: { productId: true } } },
+      });
+      const purchasedIds = [...new Set(purchasedItems.map((i) => i.variant.productId))];
+
+      if (purchasedIds.length === 0) {
+        return productsByIds(await topSellingProductIds(input.limit));
+      }
+
+      const categoryLinks = await prisma.productCategory.findMany({
+        where: { productId: { in: purchasedIds } },
+        select: { categoryId: true },
+      });
+      const categoryIds = [...new Set(categoryLinks.map((c) => c.categoryId))];
+
+      const products = await prisma.product.findMany({
+        where: {
+          status: "active",
+          deletedAt: null,
+          id: { notIn: purchasedIds },
+          ...(categoryIds.length > 0
+            ? { categories: { some: { categoryId: { in: categoryIds } } } }
+            : {}),
+        },
+        orderBy: { publishedAt: "desc" },
+        take: input.limit,
+        include: productListInclude,
+      });
+
+      if (products.length === 0) {
+        return productsByIds(await topSellingProductIds(input.limit));
+      }
 
       return products.map(toCardSummary);
     }),

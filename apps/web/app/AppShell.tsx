@@ -4,6 +4,7 @@ import { Footer, Header, ThemeProvider, Toaster } from "@silonya/ui";
 import Link from "next/link";
 import type { ReactNode } from "react";
 import { HeaderActions } from "@/components/HeaderActions";
+import { CustomerSessionProvider } from "@/lib/customer-session-client";
 import { footerColumns, footerLegalLinks, footerSocialLinks, primaryNav } from "@/lib/nav-data";
 
 // Passing `Link` (a component reference) as a prop into Header/Footer only
@@ -21,19 +22,21 @@ function Wordmark() {
   );
 }
 
-export function AppShell({ children }: { children: ReactNode }) {
+export function AppShell({ children, loggedIn }: { children: ReactNode; loggedIn: boolean }) {
   return (
-    <ThemeProvider>
-      <Header logo={<Wordmark />} items={primaryNav} actions={<HeaderActions />} linkAs={Link} />
-      <main className="flex-1">{children}</main>
-      <Footer
-        logo={<Wordmark />}
-        columns={footerColumns}
-        legalLinks={footerLegalLinks}
-        socialLinks={footerSocialLinks}
-        linkAs={Link}
-      />
-      <Toaster />
-    </ThemeProvider>
+    <CustomerSessionProvider loggedIn={loggedIn}>
+      <ThemeProvider>
+        <Header logo={<Wordmark />} items={primaryNav} actions={<HeaderActions />} linkAs={Link} />
+        <main className="flex-1">{children}</main>
+        <Footer
+          logo={<Wordmark />}
+          columns={footerColumns}
+          legalLinks={footerLegalLinks}
+          socialLinks={footerSocialLinks}
+          linkAs={Link}
+        />
+        <Toaster />
+      </ThemeProvider>
+    </CustomerSessionProvider>
   );
 }

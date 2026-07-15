@@ -50,12 +50,22 @@ export default function CheckoutPage() {
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [discountAmount, setDiscountAmount] = useState(0);
+  const [giftCardCode, setGiftCardCode] = useState("");
+  const [giftCardBalance, setGiftCardBalance] = useState<number | null>(null);
+  const [giftCardError, setGiftCardError] = useState<string | null>(null);
+  const [checkingGiftCard, setCheckingGiftCard] = useState(false);
 
   const currency = lines[0]?.currency ?? "USD";
   const subtotal = lines.reduce((sum, line) => sum + line.unitPrice * line.quantity, 0);
   const estimatedShipping = calculateShipping(subtotal, false);
   const estimatedTax = calculateTax(subtotal - discountAmount, shipping.countryCode || "US");
-  const estimatedTotal = Math.max(0, subtotal + estimatedShipping + estimatedTax - discountAmount);
+  const totalBeforeGiftCard = Math.max(
+    0,
+    subtotal + estimatedShipping + estimatedTax - discountAmount,
+  );
+  const giftCardApplied =
+    giftCardBalance !== null ? Math.min(giftCardBalance, totalBeforeGiftCard) : 0;
+  const estimatedTotal = totalBeforeGiftCard - giftCardApplied;
 
   useEffect(() => {
     if (!discountCode) {
@@ -72,6 +82,28 @@ export default function CheckoutPage() {
       });
   }, [discountCode, subtotal]);
 
+  async function checkGiftCard() {
+    const code = giftCardCode.trim();
+    if (!code) return;
+    setCheckingGiftCard(true);
+    setGiftCardError(null);
+    try {
+      const result = await trpcClient.giftCards.checkBalance.query({ code });
+      setGiftCardBalance(result.currentBalance);
+    } catch (err) {
+      setGiftCardError(err instanceof Error ? err.message : "That gift card code isn't valid.");
+      setGiftCardBalance(null);
+    } finally {
+      setCheckingGiftCard(false);
+    }
+  }
+
+  function removeGiftCard() {
+    setGiftCardCode("");
+    setGiftCardBalance(null);
+    setGiftCardError(null);
+  }
+
   async function handleSubmit(event: SyntheticEvent<HTMLFormElement>) {
     event.preventDefault();
     setSubmitting(true);
@@ -83,6 +115,7 @@ export default function CheckoutPage() {
         shippingAddress: toAddressInput(shipping),
         ...(billingSameAsShipping ? {} : { billingAddress: toAddressInput(billing) }),
         ...(discountCode ? { discountCode } : {}),
+        ...(giftCardBalance !== null ? { giftCardCode: giftCardCode.trim() } : {}),
       });
       window.location.href = result.checkoutUrl;
     } catch (err) {
@@ -195,6 +228,12 @@ export default function CheckoutPage() {
               <span>-{formatPriceForDisplay(discountAmount, currency)}</span>
             </div>
           ) : null}
+          {giftCardApplied > 0 ? (
+            <div className="text-ink flex justify-between font-sans text-sm">
+              <span>Gift card</span>
+              <span>-{formatPriceForDisplay(giftCardApplied, currency)}</span>
+            </div>
+          ) : null}
           <hr className="border-mist" />
           <div className="text-ink flex justify-between font-sans text-base font-medium">
             <span>Estimated total</span>
@@ -203,6 +242,44 @@ export default function CheckoutPage() {
           <p className="text-stone font-sans text-xs">
             Final totals are confirmed on the payment page.
           </p>
+
+          <hr className="border-mist" />
+          <div className="flex flex-col gap-2">
+            <Label htmlFor="gift-card-code">Gift card</Label>
+            <div className="flex gap-2">
+              <Input
+                id="gift-card-code"
+                value={giftCardCode}
+                onChange={(event) => {
+                  setGiftCardCode(event.target.value);
+                }}
+                placeholder="Enter code"
+                disabled={giftCardBalance !== null}
+              />
+              {giftCardBalance !== null ? (
+                <Button type="button" variant="secondary" onClick={removeGiftCard}>
+                  Remove
+                </Button>
+              ) : (
+                <Button
+                  type="button"
+                  variant="secondary"
+                  onClick={() => {
+                    void checkGiftCard();
+                  }}
+                  disabled={checkingGiftCard}
+                >
+                  Apply
+                </Button>
+              )}
+            </div>
+            {giftCardError ? <p className="text-error font-sans text-xs">{giftCardError}</p> : null}
+            {giftCardBalance !== null ? (
+              <p className="text-stone font-sans text-xs">
+                Balance: {formatPriceForDisplay(giftCardBalance, currency)}
+              </p>
+            ) : null}
+          </div>
         </div>
       </form>
     </Section>

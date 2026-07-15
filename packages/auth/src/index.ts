@@ -25,3 +25,9 @@ export {
   verifyOrderAccessToken,
   type OrderAccessTokenPayload,
 } from "./order-access-token";
+export {
+  issueVerificationToken,
+  consumeVerificationToken,
+  type VerificationTokenKind,
+} from "./verification-token";
+export { checkPasswordStrength, type PasswordCheckResult } from "./password-policy";

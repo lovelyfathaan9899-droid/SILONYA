@@ -18,6 +18,14 @@ export const adminProcedure = t.procedure.use(({ ctx, next }) => {
   return next({ ctx: { ...ctx, adminSession: ctx.adminSession } });
 });
 
+/** Requires a valid customer session (AUTHENTICATION.md §2). */
+export const customerProcedure = t.procedure.use(({ ctx, next }) => {
+  if (!ctx.customerSession) {
+    throw new TRPCError({ code: "UNAUTHORIZED", message: "You must be signed in." });
+  }
+  return next({ ctx: { ...ctx, customerSession: ctx.customerSession } });
+});
+
 /**
  * RBAC enforcement (AUTHENTICATION.md §4) — every write-affecting admin
  * procedure declares the exact permission it requires; this is the only

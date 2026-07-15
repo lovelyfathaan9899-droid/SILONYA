@@ -1,5 +1,6 @@
 import { hash } from "@node-rs/argon2";
 import { PrismaClient } from "../generated/client/index.js";
+import { seedAccounts } from "./seed-accounts";
 import { seedCatalog } from "./seed-catalog";
 import { seedDiscounts } from "./seed-discounts";
 
@@ -22,14 +23,39 @@ const PERMISSIONS = [
   "users:read",
   "users:write",
   "roles:write",
+  "reviews:read",
+  "reviews:write",
+  "gift_cards:read",
+  "gift_cards:write",
 ] as const;
 
 const ROLE_PERMISSIONS: Record<string, readonly string[]> = {
   super_admin: PERMISSIONS,
-  catalog_manager: ["catalog:read", "catalog:write", "inventory:read", "inventory:write"],
-  order_manager: ["orders:read", "orders:write", "refunds:write"],
-  support: ["orders:read", "users:read"],
-  viewer: ["catalog:read", "orders:read", "users:read", "inventory:read", "discounts:read"],
+  catalog_manager: [
+    "catalog:read",
+    "catalog:write",
+    "inventory:read",
+    "inventory:write",
+    "reviews:read",
+    "reviews:write",
+  ],
+  order_manager: [
+    "orders:read",
+    "orders:write",
+    "refunds:write",
+    "gift_cards:read",
+    "gift_cards:write",
+  ],
+  support: ["orders:read", "users:read", "reviews:read", "gift_cards:read"],
+  viewer: [
+    "catalog:read",
+    "orders:read",
+    "users:read",
+    "inventory:read",
+    "discounts:read",
+    "reviews:read",
+    "gift_cards:read",
+  ],
 };
 
 async function main() {
@@ -101,6 +127,7 @@ async function main() {
 
   await seedCatalog(prisma);
   await seedDiscounts(prisma);
+  await seedAccounts(prisma);
 }
 
 main()

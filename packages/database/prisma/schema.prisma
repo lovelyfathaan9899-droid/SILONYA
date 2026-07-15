@@ -35,11 +35,17 @@ model User {
   phone            String?
   emailVerifiedAt  DateTime? @map("email_verified_at")
   marketingOptIn   Boolean   @default(false) @map("marketing_opt_in")
-  defaultAddressId String?   @map("default_address_id")
+  defaultAddressId String?   @map("default_address_id") // superseded by the split fields below; kept for backward compatibility, unused by application code
+
+  defaultShippingAddressId String? @map("default_shipping_address_id")
+  defaultBillingAddressId  String? @map("default_billing_address_id")
 
   createdAt DateTime  @default(now()) @map("created_at")
   updatedAt DateTime  @updatedAt @map("updated_at")
   deletedAt DateTime? @map("deleted_at")
+
+  defaultShippingAddress Address? @relation("UserDefaultShippingAddress", fields: [defaultShippingAddressId], references: [id], onDelete: SetNull)
+  defaultBillingAddress  Address? @relation("UserDefaultBillingAddress", fields: [defaultBillingAddressId], references: [id], onDelete: SetNull)
 
   authIdentities      AuthIdentity[]
   sessions            Session[]
@@ -49,8 +55,62 @@ model User {
   reviews             Review[]
   wishlist            Wishlist?
   discountRedemptions DiscountRedemption[]
+  verificationTokens  VerificationToken[]
+  discountEligibility DiscountEligibility[]
+  recentlyViewed      RecentlyViewed[]
 
   @@map("users")
+}
+
+enum VerificationTokenType {
+  password_reset
+  email_verification
+}
+
+/**
+ * Single-use, time-limited tokens for password reset and email verification
+ * (AUTHENTICATION.md §2.3, §2.4) — one table for both since the shape is
+ * identical (opaque random token, hashed at rest via the same
+ * generateRefreshToken/hashRefreshToken pair packages/auth already uses for
+ * customer sessions, never the raw value stored). `usedAt` is what makes
+ * single-use enforceable; a bare signed JWT couldn't do that without a
+ * separate revocation list anyway, so this is no heavier than the
+ * alternative.
+ */
+model VerificationToken {
+  id        String                @id @default(uuid())
+  userId    String                @map("user_id")
+  type      VerificationTokenType
+  tokenHash String                @unique @map("token_hash")
+  expiresAt DateTime              @map("expires_at")
+  usedAt    DateTime?             @map("used_at")
+
+  createdAt DateTime @default(now()) @map("created_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("verification_tokens")
+}
+
+/**
+ * Client-adjacent but persisted per-account so "recently viewed" survives
+ * across devices once logged in (CUSTOMER_EXPERIENCE — guests still get a
+ * local-only version via localStorage, matching the pre-account cart/
+ * wishlist pattern; this table is additive for signed-in users only).
+ */
+model RecentlyViewed {
+  id        String   @id @default(uuid())
+  userId    String   @map("user_id")
+  productId String   @map("product_id")
+  viewedAt  DateTime @default(now()) @map("viewed_at")
+
+  user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  product Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, productId])
+  @@index([userId])
+  @@map("recently_viewed")
 }
 
 model AuthIdentity {
@@ -100,9 +160,11 @@ model Address {
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
 
-  user             User?   @relation(fields: [userId], references: [id], onDelete: Cascade)
-  ordersAsShipping Order[] @relation("OrderShippingAddress")
-  ordersAsBilling  Order[] @relation("OrderBillingAddress")
+  user                    User?   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  ordersAsShipping        Order[] @relation("OrderShippingAddress")
+  ordersAsBilling         Order[] @relation("OrderBillingAddress")
+  defaultForShippingUsers User[]  @relation("UserDefaultShippingAddress")
+  defaultForBillingUsers  User[]  @relation("UserDefaultBillingAddress")
 
   @@index([userId])
   @@map("addresses")
@@ -237,12 +299,13 @@ model Product {
   updatedAt DateTime  @updatedAt @map("updated_at")
   deletedAt DateTime? @map("deleted_at")
 
-  options     ProductOption[]
-  variants    ProductVariant[]
-  media       ProductMedia[]
-  collections ProductCollection[]
-  categories  ProductCategory[]
-  reviews     Review[]
+  options        ProductOption[]
+  variants       ProductVariant[]
+  media          ProductMedia[]
+  collections    ProductCollection[]
+  categories     ProductCategory[]
+  reviews        Review[]
+  recentlyViewed RecentlyViewed[]
 
   @@index([status])
   @@map("products")
@@ -474,6 +537,7 @@ model Order {
   shippingTotal Int    @default(0) @map("shipping_total")
   taxTotal      Int    @default(0) @map("tax_total")
   discountTotal Int    @default(0) @map("discount_total")
+  giftCardTotal Int    @default(0) @map("gift_card_total")
   grandTotal    Int    @map("grand_total")
   currency      String @default("USD") @db.Char(3)
 
@@ -497,11 +561,12 @@ model Order {
   billingAddress  Address   @relation("OrderBillingAddress", fields: [billingAddressId], references: [id], onDelete: Restrict)
   discount        Discount? @relation(fields: [discountId], references: [id], onDelete: SetNull)
 
-  items               OrderItem[]
-  statusEvents        OrderStatusEvent[]
-  payment             Payment?
-  discountRedemptions DiscountRedemption[]
-  notes               OrderNote[]
+  items                OrderItem[]
+  statusEvents         OrderStatusEvent[]
+  payment              Payment?
+  discountRedemptions  DiscountRedemption[]
+  notes                OrderNote[]
+  giftCardTransactions GiftCardTransaction[]
 
   @@index([userId])
   @@index([status])
@@ -629,8 +694,27 @@ model Discount {
 
   orders      Order[]
   redemptions DiscountRedemption[]
+  eligibility DiscountEligibility[]
 
   @@map("discounts")
+}
+
+/**
+ * Customer-specific coupons — presence of any row here restricts the
+ * discount to those users; a Discount with no eligibility rows stays
+ * available to everyone (unchanged existing behavior). Automatic discounts
+ * (PROMOTIONS — `code: null`) are applied at checkout without a code, per
+ * DATABASE_ARCHITECTURE.md's original "null = automatic discount" design.
+ */
+model DiscountEligibility {
+  discountId String @map("discount_id")
+  userId     String @map("user_id")
+
+  discount Discount @relation(fields: [discountId], references: [id], onDelete: Cascade)
+  user     User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@id([discountId, userId])
+  @@map("discount_eligibility")
 }
 
 model DiscountRedemption {
@@ -671,11 +755,27 @@ model Review {
 
   createdAt DateTime @default(now()) @map("created_at")
 
-  product Product @relation(fields: [productId], references: [id], onDelete: Cascade)
-  user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  product Product       @relation(fields: [productId], references: [id], onDelete: Cascade)
+  user    User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  media   ReviewMedia[]
 
   @@index([productId])
   @@map("reviews")
+}
+
+/**
+ * Review images (SHOPPING FEATURES — "review images architecture") — mirrors ProductMedia's shape; upload reuses the same signed-Cloudinary-upload pattern as admin product media (media.ts), stubbed until real credentials exist.
+ */
+model ReviewMedia {
+  id       String @id @default(uuid())
+  reviewId String @map("review_id")
+  url      String
+  position Int    @default(0)
+
+  review Review @relation(fields: [reviewId], references: [id], onDelete: Cascade)
+
+  @@index([reviewId])
+  @@map("review_media")
 }
 
 model Wishlist {
@@ -691,9 +791,13 @@ model Wishlist {
 }
 
 model WishlistItem {
-  id         String @id @default(uuid())
-  wishlistId String @map("wishlist_id")
-  variantId  String @map("variant_id")
+  id            String  @id @default(uuid())
+  wishlistId    String  @map("wishlist_id")
+  variantId     String  @map("variant_id")
+  // "Save for later" (SHOPPING FEATURES) reuses the wishlist bucket rather
+  // than a parallel table — moving a cart line to "saved for later" is
+  // exactly "remove from cart, add here with this flag set."
+  savedForLater Boolean @default(false) @map("saved_for_later")
 
   createdAt DateTime @default(now()) @map("created_at")
 
@@ -702,6 +806,56 @@ model WishlistItem {
 
   @@unique([wishlistId, variantId])
   @@map("wishlist_items")
+}
+
+// ─────────────────────────────────────────────────────────────────────────
+// 3.8 Gift Cards — PROMOTIONS. Stored-value balance, separate from
+// Discount (a Discount reduces a line-item price computation; a gift
+// card is redeemed against the grand total like a partial payment method
+// — DATABASE_ARCHITECTURE.md §1's "money is always integers" applies here
+// too). GiftCardTransaction is the append-only ledger; GiftCard.currentBalance
+// is a denormalized running total kept in sync inside the same transaction
+// as every ledger write, never computed ad hoc.
+// ─────────────────────────────────────────────────────────────────────────
+
+enum GiftCardTransactionType {
+  issued
+  redeemed
+  refunded
+  adjusted
+}
+
+model GiftCard {
+  id             String    @id @default(uuid())
+  code           String    @unique
+  initialBalance Int       @map("initial_balance")
+  currentBalance Int       @map("current_balance")
+  currency       String    @default("USD") @db.Char(3)
+  issuedToEmail  String?   @map("issued_to_email")
+  expiresAt      DateTime? @map("expires_at")
+  isActive       Boolean   @default(true) @map("is_active")
+
+  createdAt DateTime @default(now()) @map("created_at")
+
+  transactions GiftCardTransaction[]
+
+  @@map("gift_cards")
+}
+
+model GiftCardTransaction {
+  id         String                  @id @default(uuid())
+  giftCardId String                  @map("gift_card_id")
+  orderId    String?                 @map("order_id")
+  type       GiftCardTransactionType
+  amount     Int
+
+  createdAt DateTime @default(now()) @map("created_at")
+
+  giftCard GiftCard @relation(fields: [giftCardId], references: [id], onDelete: Cascade)
+  order    Order?   @relation(fields: [orderId], references: [id], onDelete: SetNull)
+
+  @@index([giftCardId])
+  @@map("gift_card_transactions")
 }
 
 // ─────────────────────────────────────────────────────────────────────────

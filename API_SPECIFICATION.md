@@ -23,34 +23,40 @@ Routers are organized by domain and live in `packages/api/routers/`, composed in
 
 ```
 appRouter
-├── adminAuth   (login, logout, session)                                          [implemented]
-├── adminCatalog (create/update/archive product, options, variants, inventory, media) [implemented]
-├── catalog     (list, getBySlug, getCollectionBySlug, getCategoryBySlug, search)  [implemented — public, customer-facing]
-├── checkout    (createIntent, previewDiscount, getOrderByToken, lookupOrder)     [implemented — public, guest checkout; no `cart` router — the pre-checkout cart is client-side, see DATABASE_ARCHITECTURE.md §3.4's implementation note]
-├── account     (getProfile, updateProfile, listOrders, listAddresses, wishlist)
-├── admin.orders     (list, getById, updateStatus, issueRefund)
-├── admin.discounts  (CRUD)
-└── admin.users      (list customers, manage admin roles/permissions)
+├── adminAuth      (login, logout, session)                                          [implemented]
+├── adminCatalog   (create/update/archive product, options, variants, inventory, media) [implemented]
+├── adminOrders    (list, detail, updateStatus, issueRefund, notes)                  [implemented]
+├── adminCustomers (list, detail, updateContactInfo)                                 [implemented — reuses users:read/write]
+├── adminReviews   (list, moderate)                                                  [implemented]
+├── adminDiscounts (list, detail, create, update, delete)                            [implemented]
+├── adminGiftCards (list, detail, issue, adjustBalance, setActive)                    [implemented]
+├── catalog        (list, getBySlug, getCollectionBySlug, getCategoryBySlug, search, trending, bestSellers, recommended) [implemented — public, customer-facing]
+├── checkout       (createIntent, previewDiscount, getOrderByToken, lookupOrder)     [implemented — public, guest checkout; no `cart` router — the pre-checkout cart is client-side, see DATABASE_ARCHITECTURE.md §3.4's implementation note]
+├── customerAuth   (register, login, logout, session, requestPasswordReset, resetPassword, changePassword, verifyEmail, resendVerification) [implemented]
+├── account        (profile, addresses, orders, wishlist, recentlyViewed)            [implemented]
+├── reviews        (listForProduct, eligibility, create, update, delete, mine, getUploadSignature) [implemented]
+└── giftCards      (checkBalance)                                                    [implemented — public, no login required]
 ```
 
-Routers are composed flat on `appRouter` (`adminAuth`, `adminCatalog`, `catalog`, ...) rather than nested namespaces — tRPC v11 doesn't require nesting for this, and a flat tree keeps `caller.catalog.list(...)` call sites shorter. The `admin.*` names above for not-yet-built routers are illustrative; when built they'll likely follow the same flat `adminOrders`/`adminDiscounts`/`adminUsers` convention.
+Routers are composed flat on `appRouter` (`adminAuth`, `adminCatalog`, `catalog`, ...) rather than nested namespaces — tRPC v11 doesn't require nesting for this, and a flat tree keeps `caller.catalog.list(...)` call sites shorter.
 
-- Every procedure is either `publicProcedure`, `protectedProcedure` (requires authenticated user), or `adminProcedure` (requires authenticated admin + permission check) — enforced by tRPC middleware, never by convention alone.
+- Every procedure is either `publicProcedure`, `customerProcedure` (requires an authenticated customer session), or an `adminProcedure`/`requirePermission(...)` procedure (requires authenticated admin + permission check) — enforced by tRPC middleware, never by convention alone.
 - Input/output for every procedure is a Zod schema, shared between client and server — a request that doesn't validate never reaches business logic.
 - Mutations that touch money or inventory (`checkout.createIntent`, `admin.orders.updateStatus`) are wrapped in a single DB transaction (DATABASE_ARCHITECTURE.md §5).
 
 ### Representative procedure signatures (contract, not code)
 
-| Procedure                     | Type     | Input                                                                      | Output                                                | Auth                                        |
-| ----------------------------- | -------- | -------------------------------------------------------------------------- | ----------------------------------------------------- | ------------------------------------------- |
-| `catalog.getBySlug`           | query    | `{ slug: string }`                                                         | `Product & { options, variants, media, related }`     | public                                      |
-| `catalog.list`                | query    | `{ collectionSlug?, categorySlug?, search?, sort?, cursor?, limit? }`      | paginated `Product[]` card summaries                  | public                                      |
-| `checkout.createIntent`       | mutation | `{ items[], guestEmail, shippingAddress, billingAddress?, discountCode? }` | `{ checkoutUrl, orderId }` (Stripe Checkout redirect) | public                                      |
-| `checkout.getOrderByToken`    | query    | `{ token }` (signed order-access token)                                    | `Order & { items, addresses, payment }`               | public (token-scoped, not a login session)  |
-| `checkout.lookupOrder`        | mutation | `{ orderNumber, email }`                                                   | `{ token }`                                           | public (ownership verified by number+email) |
-| `account.listOrders`          | query    | `{ cursor?, limit? }`                                                      | paginated `Order[]`                                   | protected                                   |
-| `admin.orders.updateStatus`   | mutation | `{ orderId, status, note? }`                                               | `Order`                                               | admin (`orders:write`)                      |
-| `admin.catalog.createProduct` | mutation | full product payload                                                       | `Product`                                             | admin (`catalog:write`)                     |
+| Procedure                      | Type     | Input                                                                                     | Output                                                                                                             | Auth                                                                     |
+| ------------------------------ | -------- | ----------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------ |
+| `catalog.getBySlug`            | query    | `{ slug: string }`                                                                        | `Product & { options, variants, media, related }`                                                                  | public                                                                   |
+| `catalog.list`                 | query    | `{ collectionSlug?, categorySlug?, search?, sort?, cursor?, limit? }`                     | paginated `Product[]` card summaries                                                                               | public                                                                   |
+| `checkout.createIntent`        | mutation | `{ items[], guestEmail, shippingAddress, billingAddress?, discountCode?, giftCardCode? }` | `{ checkoutUrl, orderId }` (Stripe Checkout redirect, or a confirmation-page URL directly for a zero-dollar order) | public — attaches `userId` from the session automatically when logged in |
+| `checkout.getOrderByToken`     | query    | `{ token }` (signed order-access token)                                                   | `Order & { items, addresses, payment }`                                                                            | public (token-scoped, not a login session)                               |
+| `checkout.lookupOrder`         | mutation | `{ orderNumber, email }`                                                                  | `{ token }`                                                                                                        | public (ownership verified by number+email)                              |
+| `account.orders.list`          | query    | `{ cursor?, limit? }`                                                                     | paginated `Order[]`                                                                                                | customer                                                                 |
+| `reviews.create`               | mutation | `{ productId, rating, title?, body, mediaUrls[] }`                                        | `Review` (`status: pending`)                                                                                       | customer (must have a completed order for the product)                   |
+| `adminOrders.updateStatus`     | mutation | `{ orderId, status, note? }`                                                              | `Order`                                                                                                            | admin (`orders:write`)                                                   |
+| `adminCatalog.products.create` | mutation | full product payload                                                                      | `Product`                                                                                                          | admin (`catalog:write`)                                                  |
 
 Pagination is **cursor-based** everywhere (not offset), for consistent performance as tables grow.
 

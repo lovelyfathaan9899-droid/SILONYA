@@ -33,7 +33,7 @@ export async function loginAction(_prevState: LoginState, formData: FormData): P
   }
 
   try {
-    const caller = createServerCaller({ adminSession: null });
+    const caller = createServerCaller({ adminSession: null, customerSession: null });
     const result = await caller.adminAuth.login(parsed.data);
 
     const cookieStore = await cookies();

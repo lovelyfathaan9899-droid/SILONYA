@@ -1,5 +1,6 @@
 import { signOrderAccessToken, verifyOrderAccessToken } from "@silonya/auth";
 import { prisma } from "@silonya/database";
+import { sendOrderConfirmationEmail } from "@silonya/emails";
 import { calculateShipping, calculateTax, generateOrderNumber } from "@silonya/utils";
 import { TRPCError } from "@trpc/server";
 import { z } from "zod";
@@ -7,8 +8,16 @@ import { getDefaultWarehouseId } from "../admin-catalog/shared";
 import { publicProcedure, router } from "../../trpc";
 import { getStripeClient } from "../../lib/stripe";
 import { siteUrl } from "../../lib/site-url";
-import { releaseReservation } from "../../services/inventory";
-import { CURRENCY, toAddressCreateInput, validateDiscountCode, variantLabel } from "./shared";
+import { toOrderEmailData } from "../../lib/order-email-mapper";
+import { finalizeReservation, releaseReservation } from "../../services/inventory";
+import { findRedeemableGiftCard } from "../gift-cards";
+import {
+  CURRENCY,
+  findAutomaticDiscount,
+  toAddressCreateInput,
+  validateDiscountCode,
+  variantLabel,
+} from "./shared";
 
 const addressInput = z.object({
   line1: z.string().trim().min(1),
@@ -45,9 +54,11 @@ export const checkoutRouter = router({
         shippingAddress: addressInput,
         billingAddress: addressInput.optional(),
         discountCode: z.string().trim().min(1).optional(),
+        giftCardCode: z.string().trim().min(1).optional(),
       }),
     )
-    .mutation(async ({ input }) => {
+    .mutation(async ({ ctx, input }) => {
+      const userId = ctx.customerSession?.userId ?? null;
       const variants = await prisma.productVariant.findMany({
         where: { id: { in: input.items.map((item) => item.variantId) } },
         include: {
@@ -87,13 +98,26 @@ export const checkoutRouter = router({
       );
 
       const discount = input.discountCode
-        ? await validateDiscountCode(input.discountCode, subtotal)
-        : null;
+        ? await validateDiscountCode(input.discountCode, subtotal, userId)
+        : await findAutomaticDiscount(subtotal, userId);
 
       const shippingTotal = calculateShipping(subtotal, discount?.freeShipping ?? false);
       const taxableAmount = subtotal - (discount?.amount ?? 0);
       const taxTotal = calculateTax(taxableAmount, input.shippingAddress.countryCode);
-      const grandTotal = Math.max(0, subtotal + shippingTotal + taxTotal - (discount?.amount ?? 0));
+      const totalBeforeGiftCard = Math.max(
+        0,
+        subtotal + shippingTotal + taxTotal - (discount?.amount ?? 0),
+      );
+
+      const giftCard = input.giftCardCode ? await findRedeemableGiftCard(input.giftCardCode) : null;
+      if (giftCard && giftCard.currency !== CURRENCY) {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: "That gift card can't be used for this order.",
+        });
+      }
+      const giftCardApplied = giftCard ? Math.min(giftCard.currentBalance, totalBeforeGiftCard) : 0;
+      const grandTotal = totalBeforeGiftCard - giftCardApplied;
 
       const warehouseId = await getDefaultWarehouseId();
 
@@ -115,104 +139,182 @@ export const checkoutRouter = router({
       }
 
       async function createOrder() {
-        return prisma.$transaction(async (tx) => {
-          for (const item of input.items) {
-            const affected = await tx.$executeRaw`
+        // Default Prisma interactive-transaction timeout (5s) is too tight
+        // for this transaction's query count (reserve inventory, create
+        // addresses/cart/order/items, optional discount/gift-card ledger
+        // writes, optional zero-dollar finalize) against real network
+        // latency to the database — bumped to 15s so a briefly slow
+        // connection doesn't fail an otherwise-valid checkout.
+        return prisma.$transaction(
+          async (tx) => {
+            for (const item of input.items) {
+              const affected = await tx.$executeRaw`
               UPDATE inventory
               SET quantity_reserved = quantity_reserved + ${item.quantity}
               WHERE variant_id = ${item.variantId}
                 AND warehouse_id = ${warehouseId}
                 AND quantity_on_hand - quantity_reserved >= ${item.quantity}
             `;
-            if (affected === 0) {
-              throw new TRPCError({
-                code: "CONFLICT",
-                message: "One or more items just sold out. Please review your bag.",
+              if (affected === 0) {
+                throw new TRPCError({
+                  code: "CONFLICT",
+                  message: "One or more items just sold out. Please review your bag.",
+                });
+              }
+            }
+
+            const shippingAddress = await tx.address.create({
+              data: toAddressCreateInput(input.shippingAddress, userId),
+            });
+            const billingAddress = input.billingAddress
+              ? await tx.address.create({
+                  data: toAddressCreateInput(input.billingAddress, userId),
+                })
+              : shippingAddress;
+
+            await tx.cart.create({
+              data: {
+                currency: CURRENCY,
+                expiresAt: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
+                items: {
+                  create: input.items.map((item) => ({
+                    variantId: item.variantId,
+                    quantity: item.quantity,
+                    unitPriceSnapshot: unitPriceByVariantId.get(item.variantId) ?? 0,
+                  })),
+                },
+              },
+            });
+
+            const createdOrder = await tx.order.create({
+              data: {
+                orderNumber: generateOrderNumber(),
+                userId,
+                guestEmail: input.guestEmail,
+                status: "pending_payment",
+                subtotal,
+                shippingTotal,
+                taxTotal,
+                discountTotal: discount?.amount ?? 0,
+                giftCardTotal: giftCardApplied,
+                grandTotal,
+                currency: CURRENCY,
+                shippingAddressId: shippingAddress.id,
+                billingAddressId: billingAddress.id,
+                discountId: discount?.id ?? null,
+                items: {
+                  create: input.items.map((item) => {
+                    const variant = variantById.get(item.variantId);
+                    if (!variant) throw new TRPCError({ code: "BAD_REQUEST" });
+                    const unitPrice = unitPriceByVariantId.get(item.variantId) ?? 0;
+                    return {
+                      variantId: item.variantId,
+                      productNameSnapshot: variant.product.name,
+                      variantLabelSnapshot: variantLabel(variant.optionValues),
+                      skuSnapshot: variant.sku,
+                      unitPrice,
+                      quantity: item.quantity,
+                      lineTotal: unitPrice * item.quantity,
+                    };
+                  }),
+                },
+              },
+              include: { items: true },
+            });
+
+            if (discount) {
+              await tx.discountRedemption.create({
+                data: { discountId: discount.id, orderId: createdOrder.id, userId },
               });
             }
-          }
 
-          const shippingAddress = await tx.address.create({
-            data: toAddressCreateInput(input.shippingAddress),
-          });
-          const billingAddress = input.billingAddress
-            ? await tx.address.create({ data: toAddressCreateInput(input.billingAddress) })
-            : shippingAddress;
+            if (giftCard && giftCardApplied > 0) {
+              const updated = await tx.giftCard.updateMany({
+                where: { id: giftCard.id, currentBalance: { gte: giftCardApplied } },
+                data: { currentBalance: { decrement: giftCardApplied } },
+              });
+              if (updated.count === 0) {
+                throw new TRPCError({
+                  code: "CONFLICT",
+                  message: "That gift card's balance changed. Please try again.",
+                });
+              }
+              await tx.giftCardTransaction.create({
+                data: {
+                  giftCardId: giftCard.id,
+                  orderId: createdOrder.id,
+                  type: "redeemed",
+                  amount: giftCardApplied,
+                },
+              });
+            }
 
-          await tx.cart.create({
-            data: {
-              currency: CURRENCY,
-              expiresAt: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
-              items: {
-                create: input.items.map((item) => ({
-                  variantId: item.variantId,
-                  quantity: item.quantity,
-                  unitPriceSnapshot: unitPriceByVariantId.get(item.variantId) ?? 0,
-                })),
-              },
-            },
-          });
+            // Fully covered by discount/gift card — nothing left to charge,
+            // so there's no Stripe PaymentIntent to wait on. Finalize the
+            // reservation and mark the order paid inline, mirroring what the
+            // webhook does for a paid Stripe order (services/order-fulfillment.ts).
+            if (grandTotal === 0) {
+              await finalizeReservation(tx, createdOrder.items, warehouseId);
+              await tx.order.update({
+                where: { id: createdOrder.id },
+                data: { status: "paid", placedAt: new Date() },
+              });
+              await tx.orderStatusEvent.create({
+                data: {
+                  orderId: createdOrder.id,
+                  status: "paid",
+                  triggeredBy: "system",
+                  note: "Fully covered by discount/gift card — no payment required.",
+                },
+              });
+            }
 
-          const createdOrder = await tx.order.create({
-            data: {
-              orderNumber: generateOrderNumber(),
-              guestEmail: input.guestEmail,
-              status: "pending_payment",
-              subtotal,
-              shippingTotal,
-              taxTotal,
-              discountTotal: discount?.amount ?? 0,
-              grandTotal,
-              currency: CURRENCY,
-              shippingAddressId: shippingAddress.id,
-              billingAddressId: billingAddress.id,
-              discountId: discount?.id ?? null,
-              items: {
-                create: input.items.map((item) => {
-                  const variant = variantById.get(item.variantId);
-                  if (!variant) throw new TRPCError({ code: "BAD_REQUEST" });
-                  const unitPrice = unitPriceByVariantId.get(item.variantId) ?? 0;
-                  return {
-                    variantId: item.variantId,
-                    productNameSnapshot: variant.product.name,
-                    variantLabelSnapshot: variantLabel(variant.optionValues),
-                    skuSnapshot: variant.sku,
-                    unitPrice,
-                    quantity: item.quantity,
-                    lineTotal: unitPrice * item.quantity,
-                  };
-                }),
-              },
-            },
-            include: { items: true },
-          });
-
-          if (discount) {
-            await tx.discountRedemption.create({
-              data: { discountId: discount.id, orderId: createdOrder.id, userId: null },
-            });
-          }
-
-          return createdOrder;
-        });
+            return createdOrder;
+          },
+          { timeout: 15000 },
+        );
       }
 
       const accessToken = await signOrderAccessToken({
         orderId: order.id,
         email: input.guestEmail,
       });
+      const confirmationUrl = `${siteUrl()}/order/confirmation?token=${accessToken}`;
+
+      // Fully covered by discount/gift card — no Stripe session to create;
+      // the order was already marked paid inside the transaction above.
+      if (grandTotal === 0) {
+        const orderWithDetails = await prisma.order.findUniqueOrThrow({
+          where: { id: order.id },
+          include: { items: true, shippingAddress: true, billingAddress: true },
+        });
+        const emailData = toOrderEmailData(orderWithDetails, confirmationUrl);
+        if (emailData) {
+          await sendOrderConfirmationEmail(emailData).catch((err: unknown) => {
+            console.error("[checkout] failed to send order confirmation email:", err);
+          });
+        }
+        return { checkoutUrl: confirmationUrl, orderId: order.id };
+      }
 
       try {
         const stripe = getStripeClient();
 
+        const totalReduction = (discount?.amount ?? 0) + giftCardApplied;
         let discounts: { coupon: string }[] | undefined;
-        if (discount && discount.amount > 0) {
+        if (totalReduction > 0) {
+          const couponName =
+            discount && giftCardApplied > 0
+              ? "Discount & gift card"
+              : giftCardApplied > 0
+                ? "Gift card"
+                : (input.discountCode ?? "Discount");
           const coupon = await stripe.coupons.create(
             {
-              amount_off: discount.amount,
+              amount_off: totalReduction,
               currency: CURRENCY.toLowerCase(),
               duration: "once",
-              name: input.discountCode ?? "Discount",
+              name: couponName,
             },
             { idempotencyKey: `coupon_${order.id}` },
           );
@@ -262,7 +364,7 @@ export const checkoutRouter = router({
                   ]
                 : []),
             ],
-            success_url: `${siteUrl()}/order/confirmation?token=${accessToken}`,
+            success_url: confirmationUrl,
             cancel_url: `${siteUrl()}/checkout?cancelled=1`,
             metadata: { orderId: order.id },
             payment_intent_data: { metadata: { orderId: order.id } },
@@ -297,8 +399,12 @@ export const checkoutRouter = router({
   /** Live cart-page preview — same rules as createIntent, no side effects. */
   previewDiscount: publicProcedure
     .input(z.object({ code: z.string().trim().min(1), subtotal: z.number().int().min(0) }))
-    .query(async ({ input }) => {
-      const discount = await validateDiscountCode(input.code, input.subtotal);
+    .query(async ({ ctx, input }) => {
+      const discount = await validateDiscountCode(
+        input.code,
+        input.subtotal,
+        ctx.customerSession?.userId ?? null,
+      );
       return { amount: discount.amount, freeShipping: discount.freeShipping };
     }),
 
