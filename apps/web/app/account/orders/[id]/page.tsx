@@ -5,7 +5,10 @@ import { notFound } from "next/navigation";
 import { getCustomerContext } from "@/lib/customer-context";
 import { createServerCaller } from "@/lib/trpc-caller";
 
-export const metadata: Metadata = { title: "Order details" };
+export const metadata: Metadata = {
+  title: "Order details",
+  robots: { index: false, follow: false },
+};
 
 const STATUS_LABEL: Record<string, string> = {
   pending_payment: "Finalizing your order…",

@@ -3,6 +3,7 @@ import type { Metadata } from "next";
 import type { ReactNode } from "react";
 import { AppShell } from "./AppShell";
 import { getCustomerContext } from "@/lib/customer-context";
+import { createServerCaller } from "@/lib/trpc-caller";
 import { SITE_NAME, SITE_URL } from "@/lib/site-config";
 import "./globals.css";
 
@@ -35,6 +36,7 @@ const organizationJsonLd = {
 
 export default async function RootLayout({ children }: { children: ReactNode }) {
   const ctx = await getCustomerContext();
+  const footerSections = await createServerCaller().cms.footer();
 
   return (
     <html lang="en" suppressHydrationWarning>
@@ -46,7 +48,9 @@ export default async function RootLayout({ children }: { children: ReactNode }) 
         />
       </head>
       <body className="bg-bone text-ink flex min-h-screen flex-col">
-        <AppShell loggedIn={!!ctx.customerSession}>{children}</AppShell>
+        <AppShell loggedIn={!!ctx.customerSession} footerSections={footerSections}>
+          {children}
+        </AppShell>
       </body>
     </html>
   );

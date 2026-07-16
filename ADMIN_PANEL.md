@@ -38,7 +38,12 @@ Admin Dashboard
 │   ├── Customer list/search
 │   └── Customer detail (order history, addresses — read-mostly, support tooling)
 ├── Discounts            (create/manage promo codes)
-├── Content               (editorial/lookbook pages — Phase 3, lightweight CMS)
+├── Gift Cards            (issue, adjust balance, deactivate)
+├── Reviews               (moderation queue)
+├── Content               (hero/promo/editorial blocks, static/editorial/lookbook pages, FAQ, footer links)
+├── Search                (index status/reindex, popular + zero-result queries)
+├── Analytics             (revenue/orders/customers/inventory/best-sellers/conversion-proxy/coupon+gift-card usage)
+├── Reports               (daily/weekly/monthly CSV/Excel export)
 ├── Team & Roles          (AdminUser management, role assignment — super_admin only)
 └── Audit Log              (searchable AuditLogEntry viewer — super_admin, order_manager)
 ```
@@ -51,6 +56,8 @@ Admin Dashboard
 
 - Real-time-ish (minute-level, cached) KPIs: today/week revenue, order count, conversion rate (from PostHog), low-stock alert count.
 - Not a full BI tool — deep analytics live in PostHog directly; this is an at-a-glance operational summary.
+
+> **Implementation status (Phase 10):** the full KPI set (revenue by day, orders by status, best sellers, low stock, coupon/gift-card usage) is built as its own `/analytics` dashboard (`adminAnalytics.*`, `analytics:read` permission) rather than folded into the overview page — same "at-a-glance operational summary" scope, not a BI tool (no new charting dependency; a small dependency-free bar chart component covers the one visualization used). Conversion rate is a **proxy** (paid orders ÷ new accounts over the window), clearly labeled as such — PostHog isn't configured in this environment, so a true visit-to-purchase rate isn't computable yet. `/reports` generates the same aggregates as a point-in-time daily/weekly/monthly CSV/Excel download (`apps/admin/app/api/reports/route.ts`).
 
 ### 4.2 Order Management
 
@@ -75,9 +82,10 @@ Admin Dashboard
 - Create/edit `Discount` records (DATABASE_ARCHITECTURE.md §3.6): code, type, value, validity window, usage limits.
 - Live redemption count shown against `usageLimit` so merchandising can see uptake without a separate report.
 
-### 4.6 Content (Phase 3)
+### 4.6 Content (Phase 10 — implemented)
 
 - Lightweight structured-content editor for editorial/lookbook pages — not a general-purpose page builder (avoids the "drag-and-drop page builder" anti-pattern that fights the design system, per DESIGN_SYSTEM.md's "confident restraint" philosophy). Content is structured fields (headline, image, body, CTA) rendered through fixed, designed templates.
+- Built as: a singleton-per-type `ContentBlock` editor for the homepage's hero/promo-banner/editorial sections (`/content`); `Page` CRUD for editorial/lookbook/static pages with a draft→published gate (`/content/pages`); `FaqItem` management (`/content/faq`); `FooterLink` management (`/content/footer`), replacing the storefront's previously-hardcoded `lib/homepage-content.ts`/`lib/nav-data.ts` footer "#" placeholders with real pages. `content:read`/`content:write` permissions gate all of it. Page `body` is plain text (paragraphs split on blank lines at render time) rather than stored rich-text/HTML — deliberately avoids needing an HTML sanitizer, since there's no `dangerouslySetInnerHTML` surface to sanitize in the first place.
 
 ### 4.7 Team & Roles
 

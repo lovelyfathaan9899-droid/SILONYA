@@ -1,7 +1,19 @@
 "use client";
 
 import { Button } from "@silonya/ui";
-import { Gift, LayoutGrid, ShoppingBag, Shirt, Star, Tag, Users } from "lucide-react";
+import {
+  BarChart3,
+  FileDown,
+  FileText,
+  Gift,
+  LayoutGrid,
+  Search,
+  ShoppingBag,
+  Shirt,
+  Star,
+  Tag,
+  Users,
+} from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import type { ReactNode } from "react";
@@ -9,12 +21,16 @@ import { logoutAction } from "@/app/actions";
 
 const NAV_ITEMS = [
   { label: "Overview", href: "/", icon: LayoutGrid },
+  { label: "Analytics", href: "/analytics", icon: BarChart3 },
+  { label: "Reports", href: "/reports", icon: FileDown },
   { label: "Orders", href: "/orders", icon: ShoppingBag },
   { label: "Products", href: "/products", icon: Shirt },
   { label: "Customers", href: "/customers", icon: Users },
   { label: "Reviews", href: "/reviews", icon: Star },
   { label: "Coupons", href: "/discounts", icon: Tag },
   { label: "Gift cards", href: "/gift-cards", icon: Gift },
+  { label: "Content", href: "/content", icon: FileText },
+  { label: "Search", href: "/search-analytics", icon: Search },
 ] as const;
 
 export interface AdminShellProps {

@@ -5,7 +5,10 @@ import Link from "next/link";
 import { getCustomerContext } from "@/lib/customer-context";
 import { createServerCaller } from "@/lib/trpc-caller";
 
-export const metadata: Metadata = { title: "Your account" };
+export const metadata: Metadata = {
+  title: "Your account",
+  robots: { index: false, follow: false },
+};
 
 export default async function AccountOverviewPage() {
   const ctx = await getCustomerContext();

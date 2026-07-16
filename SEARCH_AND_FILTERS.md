@@ -2,7 +2,7 @@
 
 Defines how product discovery (search, faceted filtering, sorting) is implemented, per the **Meilisearch** decision in [TECH_STACK.md](./TECH_STACK.md).
 
-> **Implementation status:** Meilisearch infrastructure isn't stood up yet. `catalog.search`/`catalog.list({ search })` (`packages/api/src/routers/catalog.ts`) currently run a Postgres `ILIKE` query as a deliberate, documented placeholder against the exact same query/index contract described here (§7's provider-agnostic design) — swap the implementation behind that contract when Meilisearch lands, not the calling code in `apps/web`.
+> **Implementation status (Phase 10):** the integration is code-complete — `packages/api/src/services/search-index.ts` (per-product-variant indexing, synonyms, typo tolerance, `distinctAttribute: "productId"` grouping) and `packages/api/src/routers/search.ts` (query/autocomplete/popular, faceted filtering, search analytics logging to `SearchQueryLog`) both exist and are wired into `apps/web`'s `/search` page and admin catalog mutations (index sync on publish/archive/inventory change). What's missing is the Meilisearch instance itself: `MEILISEARCH_HOST`/`MEILISEARCH_API_KEY` aren't set in this environment, so `search.query` transparently falls back to the same Postgres `ILIKE` placeholder described below (`isMeilisearchConfigured()` gate in `packages/api/src/lib/meilisearch.ts`) — set those two env vars and run `adminSearch.reindexAll` (or the "Reindex all products" button on `/search-analytics`) to switch over with no code changes on either side.
 
 ---
 
@@ -114,4 +114,4 @@ Per [DESIGN_SYSTEM.md](./DESIGN_SYSTEM.md) §4 principle #1 — filters/sort/sea
 
 - **Personalized ranking** (Phase 5) — boosting results based on PostHog behavioral signals (browsing history, past purchases), layered on top of the base relevance algorithm without changing the index structure.
 - **Visual/AI search** ("shop this look" from an image) — a plausible premium-fashion differentiator for a later phase; would integrate as an additional query path into the same `products` index via embedding-based similarity, evaluated once core search/filtering is proven at scale.
-- **Autocomplete/instant search** — a lightweight, debounced query against the same index as the customer types, planned for Phase 3 alongside the full search experience.
+- **Autocomplete/instant search** — implemented (`search.autocomplete`, Phase 10).

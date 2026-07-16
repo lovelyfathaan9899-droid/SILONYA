@@ -43,21 +43,56 @@ async function getFeaturedCollections() {
 
 export default async function HomePage() {
   const caller = createServerCaller();
-  const [collections, newArrivals, bestSellers] = await Promise.all([
+  const [collections, newArrivals, bestSellers, cmsContent] = await Promise.all([
     getFeaturedCollections(),
     caller.catalog.list({ collectionSlug: "new-arrivals", sort: "newest", limit: 4 }),
     caller.catalog.list({ collectionSlug: "best-sellers", limit: 4 }),
+    caller.cms.homepageContent(),
   ]);
+
+  // CMS-driven content (ADMIN_PANEL.md §4.6) with a hardcoded fallback
+  // (lib/homepage-content.ts) so the homepage never renders empty before
+  // the CMS has these singletons seeded.
+  const heroContent = cmsContent.hero?.isActive
+    ? {
+        image: {
+          url: cmsContent.hero.imageUrl ?? hero.image.url,
+          altText: cmsContent.hero.imageAlt ?? hero.image.altText,
+        },
+        eyebrow: cmsContent.hero.eyebrow ?? hero.eyebrow,
+        heading: cmsContent.hero.heading ?? hero.heading,
+        subheading: cmsContent.hero.subheading ?? hero.subheading,
+        ctaLabel: cmsContent.hero.ctaLabel ?? hero.ctaLabel,
+        ctaHref: cmsContent.hero.ctaHref ?? hero.ctaHref,
+      }
+    : hero;
+  const promoMessage = cmsContent.promoBanner?.isActive
+    ? (cmsContent.promoBanner.body ?? promo.message)
+    : promo.message;
+  const showPromoBanner = cmsContent.promoBanner ? cmsContent.promoBanner.isActive : true;
+  const editorialContent = cmsContent.editorial?.isActive
+    ? {
+        image: {
+          url: cmsContent.editorial.imageUrl ?? editorial.image.url,
+          altText: cmsContent.editorial.imageAlt ?? editorial.image.altText,
+        },
+        eyebrow: cmsContent.editorial.eyebrow ?? editorial.eyebrow,
+        heading: cmsContent.editorial.heading ?? editorial.heading,
+        body: cmsContent.editorial.body ?? editorial.body,
+        ctaLabel: cmsContent.editorial.ctaLabel ?? editorial.ctaLabel,
+        ctaHref: cmsContent.editorial.ctaHref ?? editorial.ctaHref,
+      }
+    : editorial;
 
   return (
     <>
       <Hero
-        image={hero.image}
-        eyebrow={hero.eyebrow}
-        heading={hero.heading}
-        subheading={hero.subheading}
-        ctaLabel={hero.ctaLabel}
-        ctaHref={hero.ctaHref}
+        image={heroContent.image}
+        eyebrow={heroContent.eyebrow}
+        heading={heroContent.heading}
+        subheading={heroContent.subheading}
+        ctaLabel={heroContent.ctaLabel}
+        ctaHref={heroContent.ctaHref}
       />
 
       <Section spacing="lg">
@@ -92,7 +127,7 @@ export default async function HomePage() {
         <ProductGridSection products={newArrivals.items} />
       </Section>
 
-      <PromoBanner message={promo.message} />
+      {showPromoBanner ? <PromoBanner message={promoMessage} /> : null}
 
       <Section spacing="lg">
         <div className="mb-8 flex items-end justify-between gap-4">
@@ -108,12 +143,12 @@ export default async function HomePage() {
       </Section>
 
       <EditorialSection
-        image={editorial.image}
-        eyebrow={editorial.eyebrow}
-        heading={editorial.heading}
-        body={editorial.body}
-        ctaLabel={editorial.ctaLabel}
-        ctaHref={editorial.ctaHref}
+        image={editorialContent.image}
+        eyebrow={editorialContent.eyebrow}
+        heading={editorialContent.heading}
+        body={editorialContent.body}
+        ctaLabel={editorialContent.ctaLabel}
+        ctaHref={editorialContent.ctaHref}
         imagePosition="left"
         className="pb-24"
       />

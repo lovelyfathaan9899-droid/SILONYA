@@ -5,7 +5,10 @@ import Link from "next/link";
 import { getCustomerContext } from "@/lib/customer-context";
 import { createServerCaller } from "@/lib/trpc-caller";
 
-export const metadata: Metadata = { title: "Order history" };
+export const metadata: Metadata = {
+  title: "Order history",
+  robots: { index: false, follow: false },
+};
 
 export default async function OrdersPage() {
   const ctx = await getCustomerContext();

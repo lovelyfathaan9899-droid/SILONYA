@@ -3,7 +3,7 @@ import { getCustomerContext } from "@/lib/customer-context";
 import { createServerCaller } from "@/lib/trpc-caller";
 import { WishlistManager } from "./WishlistManager";
 
-export const metadata: Metadata = { title: "Wishlist" };
+export const metadata: Metadata = { title: "Wishlist", robots: { index: false, follow: false } };
 
 export default async function AccountWishlistPage() {
   const ctx = await getCustomerContext();

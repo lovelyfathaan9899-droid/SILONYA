@@ -3,7 +3,7 @@ import { getCustomerContext } from "@/lib/customer-context";
 import { createServerCaller } from "@/lib/trpc-caller";
 import { ProfileForm } from "./ProfileForm";
 
-export const metadata: Metadata = { title: "Profile" };
+export const metadata: Metadata = { title: "Profile", robots: { index: false, follow: false } };
 
 export default async function ProfilePage() {
   const ctx = await getCustomerContext();

@@ -109,17 +109,24 @@ export async function seedAccounts(prisma: PrismaClient): Promise<void> {
   }
 
   const giftCardCode = "GC-SAMPLE-0001";
-  await prisma.giftCard.upsert({
-    where: { code: giftCardCode },
-    update: {},
-    create: {
-      code: giftCardCode,
-      initialBalance: 10000,
-      currentBalance: 10000,
-      issuedToEmail: customerEmail,
-    },
-  });
-  console.warn(`Seeded sample gift card: ${giftCardCode}.`);
+  const existingGiftCard = await prisma.giftCard.findUnique({ where: { code: giftCardCode } });
+  if (!existingGiftCard) {
+    const giftCard = await prisma.giftCard.create({
+      data: {
+        code: giftCardCode,
+        initialBalance: 10000,
+        currentBalance: 10000,
+        issuedToEmail: customerEmail,
+      },
+    });
+    // Ledger entry for the initial issuance — analytics/admin gift-card
+    // usage reads are transaction-log-driven (adminAnalytics.giftCardUsage),
+    // so a gift card created without one would silently undercount.
+    await prisma.giftCardTransaction.create({
+      data: { giftCardId: giftCard.id, type: "issued", amount: giftCard.initialBalance },
+    });
+    console.warn(`Seeded sample gift card: ${giftCardCode}.`);
+  }
 
   const customerCouponCode = "VIP15";
   const existingCoupon = await prisma.discount.findUnique({ where: { code: customerCouponCode } });

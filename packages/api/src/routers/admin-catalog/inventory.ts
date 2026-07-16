@@ -1,6 +1,7 @@
 import { prisma } from "@silonya/database";
 import { z } from "zod";
 import { requirePermission } from "../../trpc";
+import { indexProduct } from "../../services/search-index";
 import { getDefaultWarehouseId } from "./shared";
 
 const inventoryWrite = requirePermission("inventory:write");
@@ -49,6 +50,26 @@ export const inventoryRouter = {
           },
         },
       });
+
+      // Availability (in-stock/out-of-stock) is a filterable search
+      // attribute (SEARCH_AND_FILTERS.md §3's "inventory changes... trigger
+      // a lightweight availability update") — re-synced in the background,
+      // never blocking this response.
+      prisma.productVariant
+        .findUnique({ where: { id: input.variantId }, select: { productId: true } })
+        .then((variant) => {
+          if (variant) {
+            indexProduct(variant.productId).catch((err: unknown) => {
+              console.error(
+                `[admin-catalog] background index sync failed for ${variant.productId}:`,
+                err,
+              );
+            });
+          }
+        })
+        .catch((err: unknown) => {
+          console.error("[admin-catalog] failed to look up variant for index sync:", err);
+        });
 
       return updated;
     }),

@@ -3,7 +3,7 @@ import { getCustomerContext } from "@/lib/customer-context";
 import { createServerCaller } from "@/lib/trpc-caller";
 import { AddressesManager } from "./AddressesManager";
 
-export const metadata: Metadata = { title: "Addresses" };
+export const metadata: Metadata = { title: "Addresses", robots: { index: false, follow: false } };
 
 export default async function AddressesPage() {
   const ctx = await getCustomerContext();

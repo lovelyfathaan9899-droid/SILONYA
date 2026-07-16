@@ -32,10 +32,13 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
   const category = await caller.catalog.getCategoryBySlug({ slug }).catch(() => null);
   if (!category) return {};
 
+  const description = `Shop ${category.name} at SILONYA.`;
   return {
     title: category.name,
-    description: `Shop ${category.name} at SILONYA.`,
+    description,
     alternates: { canonical: `/categories/${category.slug}` },
+    openGraph: { title: category.name, description, type: "website" },
+    twitter: { card: "summary_large_image", title: category.name, description },
   };
 }
 

@@ -4,7 +4,10 @@ import { createServerCaller } from "@/lib/trpc-caller";
 import { ChangePasswordForm } from "./ChangePasswordForm";
 import { ResendVerificationButton } from "./ResendVerificationButton";
 
-export const metadata: Metadata = { title: "Account settings" };
+export const metadata: Metadata = {
+  title: "Account settings",
+  robots: { index: false, follow: false },
+};
 
 export default async function SettingsPage() {
   const ctx = await getCustomerContext();

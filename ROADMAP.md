@@ -49,9 +49,9 @@ This document breaks development into sequential phases, each with a clear goal 
 - [x] Stripe payment integration (Stripe Checkout, test mode), order creation, inventory deduction on payment success, order confirmation page, guest order tracking (order # + email)
 - [x] Transactional emails (order confirmation, payment failed) — React Email templates built; actual delivery is stubbed (logged) pending a Resend API key
 - [x] Basic admin: order management/fulfillment status (list/detail, status transitions, refunds, notes)
-- [ ] Core Web Vitals budgets measured on MVP templates (see PROJECT_RULES.md §7) — not yet run against a live deployment
+- [ ] Core Web Vitals budgets measured on MVP templates (see PROJECT_RULES.md §7) — not yet run against a live deployment; Phase 11 pass added DB indexes for hot analytics/report queries, confirmed no server-only dependency (exceljs, meilisearch) leaks into client bundles
 - [ ] Accessibility: WCAG 2.1 AA pass on all MVP flows — built to the standard, not yet audited
-- [ ] Security review before go-live (see PROJECT_RULES.md §8)
+- [ ] Security review before go-live (see PROJECT_RULES.md §8) — Phase 11 shipped real code-level hardening (CSP/HSTS/security headers on both apps, in-memory rate limiting on auth/checkout, error boundaries, `/api/health`) toward this; the formal external review itself is still outstanding
 - [x] Customer accounts (email+password) — registration, login, password reset/change, email verification, profile, saved addresses with default shipping/billing, order history, database-backed wishlist, recently viewed (AUTHENTICATION.md, ORDER_MANAGEMENT.md §4). Google/Apple OAuth deferred — needs real provider credentials.
 - [ ] Redis/BullMQ — cart persistence and webhook/email processing run without a queue for now (DATABASE_ARCHITECTURE.md §3.4, PAYMENT_ARCHITECTURE.md §3)
 
@@ -63,14 +63,15 @@ This document breaks development into sequential phases, each with a clear goal 
 
 **Goal:** Deepen conversion, retention, and merchandising capability now that the core loop works.
 
-- [ ] Search (Meilisearch) with faceted filtering — still Postgres `ILIKE` (catalog.ts's documented placeholder)
+- [x] Search (Meilisearch) with faceted filtering, autocomplete, synonyms, typo tolerance, search analytics — integration code-complete (`packages/api/src/services/search-index.ts`, `routers/search.ts`); falls back to Postgres `ILIKE` until a Meilisearch instance is actually provisioned (`MEILISEARCH_HOST`/`MEILISEARCH_API_KEY` unset in this environment)
 - [x] Wishlists / saved items — database-backed (`account.wishlist`), plus "save for later" from the cart
 - [x] Product reviews & ratings — purchase-verified, moderation queue, review images architecture
-- [ ] Editorial/content pages (lookbooks, brand storytelling) via a lightweight CMS layer
+- [x] Editorial/content pages (lookbooks, brand storytelling) via a lightweight CMS layer — hero/promo/editorial blocks, static/editorial/lookbook pages, FAQ, footer management (`adminCms`/`cms` routers, `/content` admin UI)
 - [ ] Email marketing integration (abandoned cart, post-purchase flows) via a marketing ESP — transactional account/coupon/review-reminder emails exist (stubbed pending Resend); campaign-style marketing automation does not
 - [x] Personalized recommendations ("You may also like") — related (category-based), trending/best-sellers (real order-data aggregation), and a first-pass purchase-history-based `recommended` query; rules-based, not ML
 - [x] Discount codes & promotions engine — percentage/fixed/free-shipping, expiry, usage limits (global + per-customer), customer-specific coupons, automatic (code-less) discounts, gift cards with redemption and balance tracking
 - [x] Customer account enhancements: order history, order detail/tracking — returns initiation still out of scope
+- [x] Admin analytics dashboard (revenue/orders/customers/inventory/best-sellers/low-stock/coupon+gift-card usage) and daily/weekly/monthly CSV/Excel reports — an "at-a-glance operational summary" (ADMIN_PANEL.md §4.1), not a BI tool; conversion rate is a labeled proxy pending PostHog
 
 **Exit criteria:** Repeat purchase rate and engagement metrics become trackable and improvable; the platform supports marketing-led growth, not just direct navigation.
 

@@ -2,6 +2,7 @@ import { hash } from "@node-rs/argon2";
 import { PrismaClient } from "../generated/client/index.js";
 import { seedAccounts } from "./seed-accounts";
 import { seedCatalog } from "./seed-catalog";
+import { seedCms } from "./seed-cms";
 import { seedDiscounts } from "./seed-discounts";
 
 // Seeds the RBAC baseline (roles + permissions, AUTHENTICATION.md §4) and
@@ -27,6 +28,9 @@ const PERMISSIONS = [
   "reviews:write",
   "gift_cards:read",
   "gift_cards:write",
+  "content:read",
+  "content:write",
+  "analytics:read",
 ] as const;
 
 const ROLE_PERMISSIONS: Record<string, readonly string[]> = {
@@ -38,6 +42,8 @@ const ROLE_PERMISSIONS: Record<string, readonly string[]> = {
     "inventory:write",
     "reviews:read",
     "reviews:write",
+    "content:read",
+    "content:write",
   ],
   order_manager: [
     "orders:read",
@@ -45,6 +51,7 @@ const ROLE_PERMISSIONS: Record<string, readonly string[]> = {
     "refunds:write",
     "gift_cards:read",
     "gift_cards:write",
+    "analytics:read",
   ],
   support: ["orders:read", "users:read", "reviews:read", "gift_cards:read"],
   viewer: [
@@ -55,6 +62,8 @@ const ROLE_PERMISSIONS: Record<string, readonly string[]> = {
     "discounts:read",
     "reviews:read",
     "gift_cards:read",
+    "content:read",
+    "analytics:read",
   ],
 };
 
@@ -128,6 +137,7 @@ async function main() {
   await seedCatalog(prisma);
   await seedDiscounts(prisma);
   await seedAccounts(prisma);
+  await seedCms(prisma);
 }
 
 main()

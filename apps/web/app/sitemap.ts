@@ -22,10 +22,18 @@ async function getAllProductSlugs(): Promise<string[]> {
 
 /** Dynamically generated from the live catalog (SEO_ARCHITECTURE.md §7) — never a stale static file. */
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
-  const productSlugs = await getAllProductSlugs();
+  const caller = createServerCaller();
+  const [productSlugs, editorialPages, staticPages, lookbooks] = await Promise.all([
+    getAllProductSlugs(),
+    caller.cms.listPages({ type: "editorial" }),
+    caller.cms.listPages({ type: "static_page" }),
+    caller.cms.listPages({ type: "lookbook" }),
+  ]);
 
   return [
     { url: SITE_URL, changeFrequency: "daily", priority: 1 },
+    { url: `${SITE_URL}/faq`, changeFrequency: "monthly", priority: 0.5 },
+    { url: `${SITE_URL}/lookbooks`, changeFrequency: "weekly", priority: 0.6 },
     ...featuredCollectionSlugs.map((slug) => ({
       url: `${SITE_URL}/collections/${slug}`,
       changeFrequency: "daily" as const,
@@ -40,6 +48,16 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       url: `${SITE_URL}/products/${slug}`,
       changeFrequency: "weekly" as const,
       priority: 0.6,
+    })),
+    ...[...editorialPages, ...staticPages].map((page) => ({
+      url: `${SITE_URL}/pages/${page.slug}`,
+      changeFrequency: "monthly" as const,
+      priority: 0.4,
+    })),
+    ...lookbooks.map((page) => ({
+      url: `${SITE_URL}/lookbooks/${page.slug}`,
+      changeFrequency: "monthly" as const,
+      priority: 0.5,
     })),
   ];
 }

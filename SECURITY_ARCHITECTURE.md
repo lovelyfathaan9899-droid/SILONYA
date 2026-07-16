@@ -47,6 +47,8 @@ Set at the edge (Next.js middleware / Vercel config) on every response:
 - `Strict-Transport-Security` — HSTS with a long max-age, enforced across the whole domain.
 - `X-Content-Type-Options: nosniff`, `X-Frame-Options: DENY` (or CSP `frame-ancestors 'none'`), `Referrer-Policy: strict-origin-when-cross-origin`.
 
+> **Implementation status (Phase 11):** headers are set via `next.config.ts`'s `headers()` in both apps (`apps/web`, `apps/admin`) — HSTS, `X-Content-Type-Options`, `X-Frame-Options`, `Referrer-Policy`, `Permissions-Policy`, and a CSP covering `default-src`/`img-src`/`font-src`/`connect-src`/`frame-ancestors`/`base-uri`/`form-action`/`object-src` are all live. One deliberate gap: `script-src` still includes `'unsafe-inline'` rather than this section's documented nonce approach — this codebase renders several inline `<script>` tags (`ThemeScript` in `packages/ui`, per-page JSON-LD structured data), and a correct nonce implementation needs a per-request nonce generated in middleware and threaded through every one of those call sites. That's a real follow-up, not shipped yet; every other directive is enforced as documented.
+
 ### 3.4 CSRF
 
 SameSite=Lax cookies (AUTHENTICATION.md §2.2) mitigate the majority of CSRF risk by default; state-changing REST endpoints (e.g., webhook receivers excluded, since those use signature verification instead) additionally validate request origin.
@@ -54,6 +56,8 @@ SameSite=Lax cookies (AUTHENTICATION.md §2.2) mitigate the majority of CSRF ris
 ### 3.5 Rate Limiting & Abuse Prevention
 
 Redis-backed limits on auth, checkout, and public API surfaces (API_SPECIFICATION.md §5) — the first line of defense against credential stuffing, checkout abuse, and scraping.
+
+> **Implementation status (Phase 11):** `packages/api/src/lib/rate-limit.ts` implements this today as an in-memory fixed-window limiter (same "documented deviation" pattern as DATABASE_ARCHITECTURE.md §3.4's cart/session note — Redis/Upstash isn't provisioned in this environment). It's applied to `customerAuth.register`/`login`/`requestPasswordReset`/`resetPassword` (keyed by email, not IP — see the file's own comment for why) and `checkout.createIntent` (keyed by guest email), runtime-verified to correctly return `429 TOO_MANY_REQUESTS` after the configured threshold. It works correctly for a single Node process but does not share state across multiple serverless instances — swap in Upstash's Redis-backed limiter before a multi-instance production deploy.
 
 ---
 

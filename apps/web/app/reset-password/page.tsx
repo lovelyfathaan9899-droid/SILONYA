@@ -3,7 +3,10 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { ResetPasswordForm } from "./ResetPasswordForm";
 
-export const metadata: Metadata = { title: "Reset your password" };
+export const metadata: Metadata = {
+  title: "Reset your password",
+  robots: { index: false, follow: false },
+};
 
 interface PageProps {
   searchParams: Promise<{ token?: string }>;

@@ -35,7 +35,12 @@ appRouter
 ├── customerAuth   (register, login, logout, session, requestPasswordReset, resetPassword, changePassword, verifyEmail, resendVerification) [implemented]
 ├── account        (profile, addresses, orders, wishlist, recentlyViewed)            [implemented]
 ├── reviews        (listForProduct, eligibility, create, update, delete, mine, getUploadSignature) [implemented]
-└── giftCards      (checkBalance)                                                    [implemented — public, no login required]
+├── giftCards      (checkBalance)                                                    [implemented — public, no login required]
+├── search         (query, autocomplete, popular)                                    [implemented — public; Meilisearch when configured, Postgres fallback otherwise, SEARCH_AND_FILTERS.md]
+├── cms            (homepageContent, footer, listPages, getPageBySlug, faq)          [implemented — public]
+├── adminSearch    (status, reindexAll, popularQueries, zeroResultQueries)           [implemented — catalog:read/write]
+├── adminCms       (contentBlocks, pages, faq, footerLinks — each with CRUD)         [implemented — content:read/write]
+└── adminAnalytics (summary, revenueByDay, ordersByStatus, bestSellers, lowStock, conversionRateProxy, couponUsage, giftCardUsage) [implemented — analytics:read]
 ```
 
 Routers are composed flat on `appRouter` (`adminAuth`, `adminCatalog`, `catalog`, ...) rather than nested namespaces — tRPC v11 doesn't require nesting for this, and a flat tree keeps `caller.catalog.list(...)` call sites shorter.
@@ -73,6 +78,8 @@ Base path: `/api/v1/`. Versioned from day one — a `v2` can be introduced witho
 | `/api/v1/sitemap.xml`                              | GET    | Dynamic sitemap generation                | public                          |
 | `/api/v1/health`                                   | GET    | Liveness/readiness probe                  | public, no sensitive data       |
 | `/api/v1/products` _(future public API, Phase 5+)_ | GET    | Read-only catalog access for partners     | API key                         |
+
+**Implementation note (Phase 11):** `/api/health` (both apps, unversioned — an internal uptime signal for DEPLOYMENT.md §6, not a partner-facing surface) and `apps/admin/app/api/reports` (`GET ?period=&format=csv|xlsx`, admin session + `analytics:read`, binary/CSV file responses rather than JSON — the reason it's a REST route and not a tRPC procedure) are both implemented. Neither uses the `/api/v1/` prefix, since that namespace is specifically for the versioned external partner surface this table describes.
 
 **Webhook handling rule:** every inbound webhook is (1) signature-verified before any processing, (2) idempotency-checked against a `ProcessedWebhookEvent` table keyed by provider event ID, (3) queued to BullMQ for actual processing rather than handled synchronously in the request — the route handler's only job is verify-and-enqueue. Full detail in [PAYMENT_ARCHITECTURE.md](./PAYMENT_ARCHITECTURE.md) §4.
 

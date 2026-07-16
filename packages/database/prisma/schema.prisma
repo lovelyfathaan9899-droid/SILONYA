@@ -59,6 +59,7 @@ model User {
   discountEligibility DiscountEligibility[]
   recentlyViewed      RecentlyViewed[]
 
+  @@index([createdAt])
   @@map("users")
 }
 
@@ -570,6 +571,11 @@ model Order {
 
   @@index([userId])
   @@index([status])
+  // Phase 10+11 analytics/reports (admin-analytics.ts, services/reports.ts)
+  // filter on exactly this pair — status IN (...) AND placed_at >= X — on
+  // every dashboard load; without it those queries fall back to a full
+  // table scan as order volume grows.
+  @@index([status, placedAt])
   @@map("orders")
 }
 
@@ -856,6 +862,124 @@ model GiftCardTransaction {
 
   @@index([giftCardId])
   @@map("gift_card_transactions")
+}
+
+// ─────────────────────────────────────────────────────────────────────────
+// 3.9 Content (CMS) — ADMIN_PANEL.md §4.6. "Lightweight structured-content
+// editor... not a general-purpose page builder": every model here is a
+// fixed set of typed fields rendered through an existing, designed
+// component (Hero, PromoBanner, EditorialSection), never a freeform
+// block/drag-and-drop schema.
+// ─────────────────────────────────────────────────────────────────────────
+
+enum ContentBlockType {
+  hero
+  promo_banner
+  editorial
+}
+
+/**
+ * One row per type (`type` is unique) — the homepage has exactly one hero,
+ * one promo banner, one editorial section (apps/web/app/page.tsx's fixed
+ * structure, unchanged); this table replaces lib/homepage-content.ts's
+ * hardcoded exports with the same shape, admin-editable. Unused fields for
+ * a given type stay null (e.g. promo_banner only uses `body` as its
+ * message) rather than three near-duplicate tables for three singletons.
+ */
+model ContentBlock {
+  id         String           @id @default(uuid())
+  type       ContentBlockType @unique
+  eyebrow    String?
+  heading    String?
+  subheading String?
+  body       String?
+  imageUrl   String?
+  imageAlt   String?
+  ctaLabel   String?
+  ctaHref    String?
+  isActive   Boolean          @default(true)
+
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@map("content_blocks")
+}
+
+enum PageType {
+  editorial
+  lookbook
+  static_page
+}
+
+enum PageStatus {
+  draft
+  published
+}
+
+/**
+ * Editorial/lookbook/static pages (About, Shipping & Returns, Size Guide, ...) — one fixed template per type (image + eyebrow + heading + body + optional CTA), not a page builder.
+ */
+model Page {
+  id             String     @id @default(uuid())
+  slug           String     @unique
+  type           PageType
+  title          String
+  heroImageUrl   String?    @map("hero_image_url")
+  heroImageAlt   String?    @map("hero_image_alt")
+  body           String
+  seoTitle       String?    @map("seo_title")
+  seoDescription String?    @map("seo_description")
+  status         PageStatus @default(draft)
+  publishedAt    DateTime?  @map("published_at")
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@index([status])
+  @@map("pages")
+}
+
+model FaqItem {
+  id       String  @id @default(uuid())
+  category String?
+  question String
+  answer   String
+  position Int     @default(0)
+  isActive Boolean @default(true) @map("is_active")
+
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@map("faq_items")
+}
+
+/**
+ * Replaces lib/nav-data.ts's hardcoded footerColumns/footerLegalLinks — `section` is free text (e.g. "Help", "About", "legal") rather than a fixed enum since footer grouping is a merchandising decision, not a structural one.
+ */
+model FooterLink {
+  id       String  @id @default(uuid())
+  section  String
+  label    String
+  href     String
+  position Int     @default(0)
+  isActive Boolean @default(true) @map("is_active")
+
+  @@map("footer_links")
+}
+
+// ─────────────────────────────────────────────────────────────────────────
+// 3.10 Search — SEARCH_AND_FILTERS.md §8. No PII; query text + result count
+// only, for popular-searches/zero-result reporting.
+// ─────────────────────────────────────────────────────────────────────────
+
+model SearchQueryLog {
+  id          String @id @default(uuid())
+  query       String
+  resultCount Int    @map("result_count")
+
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@index([createdAt])
+  @@index([query])
+  @@map("search_query_logs")
 }
 
 // ─────────────────────────────────────────────────────────────────────────

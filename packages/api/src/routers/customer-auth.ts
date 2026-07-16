@@ -16,11 +16,34 @@ import {
 } from "@silonya/emails";
 import { TRPCError } from "@trpc/server";
 import { z } from "zod";
+import { checkRateLimit } from "../lib/rate-limit";
 import { siteUrl } from "../lib/site-url";
 import { customerProcedure, publicProcedure, router } from "../trpc";
 
 const emailSchema = z.string().trim().toLowerCase().email();
 const passwordSchema = z.string().min(8);
+
+/**
+ * SECURITY_ARCHITECTURE.md §3.5 — credential-stuffing/abuse protection on
+ * auth endpoints. Keyed by the submitted email (not IP — see
+ * lib/rate-limit.ts) so it works identically whether the caller is the
+ * public tRPC route or an in-process Server Action caller, neither of
+ * which reliably exposes a client IP here.
+ */
+function assertNotRateLimited(
+  action: string,
+  email: string,
+  limit: number,
+  windowMs: number,
+): void {
+  const result = checkRateLimit(`${action}:${email.toLowerCase()}`, limit, windowMs);
+  if (!result.allowed) {
+    throw new TRPCError({
+      code: "TOO_MANY_REQUESTS",
+      message: "Too many attempts. Please try again in a few minutes.",
+    });
+  }
+}
 
 async function sendVerificationEmail(userId: string, email: string): Promise<void> {
   const token = await issueVerificationToken(userId, "email_verification");
@@ -55,6 +78,8 @@ export const customerAuthRouter = router({
       }),
     )
     .mutation(async ({ input }) => {
+      assertNotRateLimited("register", input.email, 5, 60 * 60 * 1000);
+
       const existing = await prisma.user.findUnique({ where: { email: input.email } });
       if (existing) {
         throw new TRPCError({
@@ -120,6 +145,8 @@ export const customerAuthRouter = router({
   login: publicProcedure
     .input(z.object({ email: emailSchema, password: z.string().min(1) }))
     .mutation(async ({ input }) => {
+      assertNotRateLimited("login", input.email, 10, 15 * 60 * 1000);
+
       const genericError = new TRPCError({
         code: "UNAUTHORIZED",
         message: "Invalid email or password.",
@@ -198,6 +225,8 @@ export const customerAuthRouter = router({
   requestPasswordReset: publicProcedure
     .input(z.object({ email: emailSchema }))
     .mutation(async ({ input }) => {
+      assertNotRateLimited("password-reset-request", input.email, 5, 60 * 60 * 1000);
+
       const user = await prisma.user.findUnique({ where: { email: input.email } });
       if (user && !user.deletedAt) {
         const token = await issueVerificationToken(user.id, "password_reset");
@@ -214,6 +243,8 @@ export const customerAuthRouter = router({
   resetPassword: publicProcedure
     .input(z.object({ token: z.string().min(1), newPassword: passwordSchema }))
     .mutation(async ({ input }) => {
+      assertNotRateLimited("password-reset-consume", input.token, 10, 15 * 60 * 1000);
+
       const userId = await consumeVerificationToken(input.token, "password_reset");
       if (!userId) {
         throw new TRPCError({

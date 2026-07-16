@@ -15,3 +15,10 @@ export {
   markOrderPaymentFailed,
   syncRefundFromWebhook,
 } from "./services/order-fulfillment";
+export {
+  generateReport,
+  reportToCsv,
+  reportToExcelBuffer,
+  type ReportPeriod,
+  type ReportSummary,
+} from "./services/reports";

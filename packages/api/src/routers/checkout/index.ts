@@ -7,6 +7,7 @@ import { z } from "zod";
 import { getDefaultWarehouseId } from "../admin-catalog/shared";
 import { publicProcedure, router } from "../../trpc";
 import { getStripeClient } from "../../lib/stripe";
+import { checkRateLimit } from "../../lib/rate-limit";
 import { siteUrl } from "../../lib/site-url";
 import { toOrderEmailData } from "../../lib/order-email-mapper";
 import { finalizeReservation, releaseReservation } from "../../services/inventory";
@@ -58,6 +59,20 @@ export const checkoutRouter = router({
       }),
     )
     .mutation(async ({ ctx, input }) => {
+      // SECURITY_ARCHITECTURE.md §3.5 — abuse protection on checkout
+      // (card-testing/carding, per the threat model in that doc).
+      const rateLimitResult = checkRateLimit(
+        `checkout:${input.guestEmail.toLowerCase()}`,
+        20,
+        60 * 60 * 1000,
+      );
+      if (!rateLimitResult.allowed) {
+        throw new TRPCError({
+          code: "TOO_MANY_REQUESTS",
+          message: "Too many checkout attempts. Please try again in a few minutes.",
+        });
+      }
+
       const userId = ctx.customerSession?.userId ?? null;
       const variants = await prisma.productVariant.findMany({
         where: { id: { in: input.items.map((item) => item.variantId) } },

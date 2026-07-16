@@ -2,7 +2,15 @@ import { prisma } from "@silonya/database";
 import { TRPCError } from "@trpc/server";
 import { z } from "zod";
 import { requirePermission } from "../../trpc";
+import { indexProduct, removeProductFromIndex } from "../../services/search-index";
 import { stripUndefined, uniqueSlug } from "./shared";
+
+/** Fire-and-forget — index sync happens after the write commits, never blocking the admin's response (SEARCH_AND_FILTERS.md §3). */
+function syncIndexInBackground(productId: string): void {
+  indexProduct(productId).catch((err: unknown) => {
+    console.error(`[admin-catalog] background index sync failed for ${productId}:`, err);
+  });
+}
 
 const PRODUCT_STATUS = z.enum(["draft", "active", "archived"]);
 
@@ -147,6 +155,7 @@ export const productsRouter = {
         }
       });
 
+      syncIndexInBackground(id);
       return prisma.product.findUniqueOrThrow({ where: { id } });
     }),
 
@@ -205,6 +214,7 @@ export const productsRouter = {
         },
       });
 
+      syncIndexInBackground(input.id);
       return updated;
     }),
 
@@ -225,6 +235,9 @@ export const productsRouter = {
         },
       });
 
+      removeProductFromIndex(input.id).catch((err: unknown) => {
+        console.error(`[admin-catalog] background index removal failed for ${input.id}:`, err);
+      });
       return updated;
     }),
 };

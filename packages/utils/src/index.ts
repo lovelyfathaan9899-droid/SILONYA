@@ -1,5 +1,6 @@
 export { formatPriceForDisplay, parsePriceToMinorUnits } from "./formatPrice";
 export { slugify } from "./slugify";
+export { toCsv } from "./csv";
 export {
   generateOrderNumber,
   calculateShipping,

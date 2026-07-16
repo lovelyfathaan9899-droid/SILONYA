@@ -2,7 +2,7 @@ import { Section } from "@silonya/ui";
 import type { Metadata } from "next";
 import { LoginForm } from "./LoginForm";
 
-export const metadata: Metadata = { title: "Sign in" };
+export const metadata: Metadata = { title: "Sign in", robots: { index: false, follow: false } };
 
 interface PageProps {
   searchParams: Promise<{ next?: string }>;

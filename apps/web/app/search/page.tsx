@@ -20,9 +20,7 @@ export default async function SearchPage({ searchParams }: PageProps) {
   const { q } = await searchParams;
   const query = q?.trim() ?? "";
 
-  const results = query
-    ? await createServerCaller().catalog.list({ search: query, limit: 48 })
-    : null;
+  const results = query ? await createServerCaller().search.query({ q: query, limit: 48 }) : null;
 
   return (
     <Section spacing="lg">

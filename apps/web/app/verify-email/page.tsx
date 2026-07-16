@@ -3,7 +3,10 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { createServerCaller } from "@/lib/trpc-caller";
 
-export const metadata: Metadata = { title: "Verify your email" };
+export const metadata: Metadata = {
+  title: "Verify your email",
+  robots: { index: false, follow: false },
+};
 
 interface PageProps {
   searchParams: Promise<{ token?: string }>;

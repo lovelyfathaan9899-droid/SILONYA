@@ -301,6 +301,20 @@ Full order lifecycle, reservation, and refund workflows: [ORDER_MANAGEMENT.md](.
 
 ---
 
+### 3.8 Content & Search (Phase 10 — implemented)
+
+**ContentBlock** — one row per `type` (`hero`/`promo_banner`/`editorial`, unique constraint), replacing the storefront's previously-hardcoded homepage copy. Unused fields for a given type stay null rather than three near-duplicate tables for three singletons.
+
+**Page** — editorial/lookbook/static pages, one fixed template per `type` (not a page builder, per ADMIN_PANEL.md §4.6). `status` (`draft`/`published`) gates public visibility; `body` is plain text, never stored HTML, so there's no XSS surface to sanitize.
+
+**FaqItem** — question/answer pairs, optional `category` grouping, `position` for ordering.
+
+**FooterLink** — `section` (free text — a "Legal" section renders as the footer's legal-links row instead of a regular column) + `label`/`href`/`position`, replacing the hardcoded footer link columns.
+
+**SearchQueryLog** — query text + result count only, no PII (SEARCH_AND_FILTERS.md §8), powers popular-searches and zero-result reporting regardless of whether Meilisearch or the Postgres fallback answered the query.
+
+---
+
 ## 4. Indexing Strategy
 
 | Table              | Index                                      | Reason                               |
