@@ -1,6 +1,7 @@
 import { prisma } from "@silonya/database";
 import { TRPCError } from "@trpc/server";
 import { z } from "zod";
+import { resolveCategoryIds } from "../lib/category-tree";
 import { customerProcedure, publicProcedure, router } from "../trpc";
 
 const SORT = z.enum(["recommended", "newest", "price-asc", "price-desc"]);
@@ -120,11 +121,19 @@ export const catalogRouter = router({
       }),
     )
     .query(async ({ input }) => {
+      // Resolves to itself + all descendant category ids, so a department
+      // slug (e.g. "women") matches products tagged to any of its leaf
+      // subcategories, not just products tagged to the bare department
+      // (PRODUCT_SYSTEM.md §5 — a product is assigned to exactly one leaf).
+      const categoryIds = input.categorySlug
+        ? await resolveCategoryIds(input.categorySlug)
+        : undefined;
+
       const where = {
         status: "active" as const,
         deletedAt: null,
         ...(input.categorySlug
-          ? { categories: { some: { category: { slug: input.categorySlug } } } }
+          ? { categories: { some: { categoryId: { in: categoryIds ?? [] } } } }
           : {}),
         ...(input.collectionSlug
           ? { collections: { some: { collection: { slug: input.collectionSlug } } } }
@@ -158,7 +167,7 @@ export const catalogRouter = router({
           include: { optionValues: { include: { productOptionValue: true } }, inventory: true },
         },
         media: { orderBy: { position: "asc" } },
-        categories: { include: { category: true } },
+        categories: { include: { category: { include: { parent: true } } } },
         collections: { include: { collection: true } },
       },
     });
@@ -208,7 +217,16 @@ export const catalogRouter = router({
       })),
       media: product.media.map((m) => ({ url: m.url, altText: m.altText, variantId: m.variantId })),
       category: product.categories[0]?.category
-        ? { name: product.categories[0].category.name, slug: product.categories[0].category.slug }
+        ? {
+            name: product.categories[0].category.name,
+            slug: product.categories[0].category.slug,
+            parent: product.categories[0].category.parent
+              ? {
+                  name: product.categories[0].category.parent.name,
+                  slug: product.categories[0].category.parent.slug,
+                }
+              : null,
+          }
         : null,
       related: related.map(toCardSummary),
     };
@@ -229,7 +247,7 @@ export const catalogRouter = router({
     .query(async ({ input }) => {
       const category = await prisma.category.findUnique({
         where: { slug: input.slug },
-        include: { parent: true },
+        include: { parent: true, children: { orderBy: { name: "asc" } } },
       });
       if (!category) {
         throw new TRPCError({ code: "NOT_FOUND", message: "Category not found." });

@@ -1,5 +1,6 @@
 import { prisma } from "@silonya/database";
 import { z } from "zod";
+import { resolveCategoryIds } from "../lib/category-tree";
 import { getMeilisearchClient, isMeilisearchConfigured, PRODUCTS_INDEX } from "../lib/meilisearch";
 import { publicProcedure, router } from "../trpc";
 import type { ProductSearchDocument } from "../services/search-index";
@@ -136,11 +137,15 @@ function variantAvailable(
  * an intentional simplification for the placeholder path.
  */
 async function searchViaPostgres(input: z.infer<typeof searchInput>) {
+  // Descendant-aware, matching catalog.ts's `list` — a department slug
+  // matches products tagged to any of its leaf subcategories.
+  const categoryIds = input.category ? await resolveCategoryIds(input.category) : undefined;
+
   const where = {
     status: "active" as const,
     deletedAt: null,
     ...(input.q ? { name: { contains: input.q, mode: "insensitive" as const } } : {}),
-    ...(input.category ? { categories: { some: { category: { slug: input.category } } } } : {}),
+    ...(input.category ? { categories: { some: { categoryId: { in: categoryIds ?? [] } } } } : {}),
     ...(input.collection
       ? { collections: { some: { collection: { slug: input.collection } } } }
       : {}),

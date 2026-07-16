@@ -2,6 +2,7 @@ import { prisma } from "@silonya/database";
 import { TRPCError } from "@trpc/server";
 import { z } from "zod";
 import { requirePermission } from "../../trpc";
+import { resolveCategoryIds } from "../../lib/category-tree";
 import { indexProduct, removeProductFromIndex } from "../../services/search-index";
 import { stripUndefined, uniqueSlug } from "./shared";
 
@@ -23,15 +24,23 @@ export const productsRouter = {
       z.object({
         search: z.string().trim().min(1).optional(),
         status: PRODUCT_STATUS.optional(),
+        categorySlug: z.string().trim().optional(),
         cursor: z.string().uuid().optional(),
         limit: z.number().int().min(1).max(100).default(20),
       }),
     )
     .query(async ({ input }) => {
+      const categoryIds = input.categorySlug
+        ? await resolveCategoryIds(input.categorySlug)
+        : undefined;
+
       const products = await prisma.product.findMany({
         where: {
           deletedAt: null,
           ...(input.status ? { status: input.status } : {}),
+          ...(input.categorySlug
+            ? { categories: { some: { categoryId: { in: categoryIds ?? [] } } } }
+            : {}),
           ...(input.search
             ? { name: { contains: input.search, mode: "insensitive" as const } }
             : {}),

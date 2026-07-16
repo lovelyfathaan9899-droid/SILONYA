@@ -8,12 +8,21 @@ export interface CollectionCardProps {
   image: { url: string; altText: string };
   description?: string;
   className?: string;
+  /** Overrides the default `/collections/${slug}` link — used to reuse this same premium card for department/category links. */
+  href?: string;
 }
 
-export function CollectionCard({ slug, name, image, description, className }: CollectionCardProps) {
+export function CollectionCard({
+  slug,
+  name,
+  image,
+  description,
+  className,
+  href,
+}: CollectionCardProps) {
   return (
     <Link
-      href={`/collections/${slug}`}
+      href={href ?? `/collections/${slug}`}
       className={cn("bg-mist group relative flex aspect-[3/4] w-full overflow-hidden", className)}
     >
       <Image

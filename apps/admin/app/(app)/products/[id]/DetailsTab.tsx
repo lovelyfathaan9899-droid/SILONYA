@@ -119,6 +119,21 @@ export function DetailsTab({ product }: { product: ProductDetail }) {
     setter(next);
   }
 
+  // Groups the flat category list into department headings with nested
+  // subcategory checkboxes (PRODUCT_SYSTEM.md §5's hierarchical tree) —
+  // `parentId` alone is enough, no extra query needed.
+  const categoryList = categories.data ?? [];
+  const topLevelCategories = categoryList.filter((c) => c.parentId === null);
+  const subcategoriesByParent = new Map<string, typeof categoryList>();
+  for (const category of categoryList) {
+    if (category.parentId) {
+      subcategoriesByParent.set(category.parentId, [
+        ...(subcategoriesByParent.get(category.parentId) ?? []),
+        category,
+      ]);
+    }
+  }
+
   return (
     <div className="flex max-w-2xl flex-col gap-6 py-6">
       <div className="flex flex-col gap-2">
@@ -183,17 +198,37 @@ export function DetailsTab({ product }: { product: ProductDetail }) {
 
       <div className="flex flex-col gap-2">
         <Label>Categories</Label>
-        <div className="flex flex-col gap-2">
-          {(categories.data ?? []).map((category) => (
-            <div key={category.id} className="flex items-center gap-2">
-              <Checkbox
-                id={`category-${category.id}`}
-                checked={categoryIds.has(category.id)}
-                onCheckedChange={() => {
-                  toggle(categoryIds, setCategoryIds, category.id);
-                }}
-              />
-              <Label htmlFor={`category-${category.id}`}>{category.name}</Label>
+        <div className="flex flex-col gap-4">
+          {topLevelCategories.map((department) => (
+            <div key={department.id} className="flex flex-col gap-2">
+              <div className="flex items-center gap-2">
+                <Checkbox
+                  id={`category-${department.id}`}
+                  checked={categoryIds.has(department.id)}
+                  onCheckedChange={() => {
+                    toggle(categoryIds, setCategoryIds, department.id);
+                  }}
+                />
+                <Label htmlFor={`category-${department.id}`} className="font-medium">
+                  {department.name}
+                </Label>
+              </div>
+              {(subcategoriesByParent.get(department.id) ?? []).length > 0 ? (
+                <div className="ml-6 flex flex-col gap-2">
+                  {(subcategoriesByParent.get(department.id) ?? []).map((sub) => (
+                    <div key={sub.id} className="flex items-center gap-2">
+                      <Checkbox
+                        id={`category-${sub.id}`}
+                        checked={categoryIds.has(sub.id)}
+                        onCheckedChange={() => {
+                          toggle(categoryIds, setCategoryIds, sub.id);
+                        }}
+                      />
+                      <Label htmlFor={`category-${sub.id}`}>{sub.name}</Label>
+                    </div>
+                  ))}
+                </div>
+              ) : null}
             </div>
           ))}
           <QuickCreateTaxonomy

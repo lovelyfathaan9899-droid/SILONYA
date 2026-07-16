@@ -3,6 +3,7 @@ import { CollectionCard, EditorialSection, Hero, PromoBanner, Section } from "@s
 import { ProductGridSection } from "@/components/ProductGridSection";
 import { createServerCaller } from "@/lib/trpc-caller";
 import { editorial, featuredCollectionSlugs, hero, promo } from "@/lib/homepage-content";
+import { departments } from "@/lib/departments";
 import Link from "next/link";
 
 export const metadata: Metadata = {
@@ -15,6 +16,25 @@ export const metadata: Metadata = {
 // SSG+ISR — the homepage is fully server-rendered with no client-JS-dependent
 // critical content (SEO_ARCHITECTURE.md §2).
 export const revalidate = 3600;
+
+async function getFeaturedDepartments() {
+  const caller = createServerCaller();
+
+  return Promise.all(
+    departments.map(async (department) => {
+      const products = await caller.catalog.list({ categorySlug: department.slug, limit: 1 });
+      const cover = products.items[0]?.image;
+      return {
+        slug: department.slug,
+        name: department.name,
+        image: cover ?? {
+          url: "https://placehold.co/900x1200/e7e4de/111111.png?text=SILONYA",
+          altText: department.name,
+        },
+      };
+    }),
+  );
+}
 
 async function getFeaturedCollections() {
   const caller = createServerCaller();
@@ -43,12 +63,14 @@ async function getFeaturedCollections() {
 
 export default async function HomePage() {
   const caller = createServerCaller();
-  const [collections, newArrivals, bestSellers, cmsContent] = await Promise.all([
-    getFeaturedCollections(),
-    caller.catalog.list({ collectionSlug: "new-arrivals", sort: "newest", limit: 4 }),
-    caller.catalog.list({ collectionSlug: "best-sellers", limit: 4 }),
-    caller.cms.homepageContent(),
-  ]);
+  const [featuredDepartments, collections, newArrivals, bestSellers, cmsContent] =
+    await Promise.all([
+      getFeaturedDepartments(),
+      getFeaturedCollections(),
+      caller.catalog.list({ collectionSlug: "new-arrivals", sort: "newest", limit: 4 }),
+      caller.catalog.list({ collectionSlug: "best-sellers", limit: 4 }),
+      caller.cms.homepageContent(),
+    ]);
 
   // CMS-driven content (ADMIN_PANEL.md §4.6) with a hardcoded fallback
   // (lib/homepage-content.ts) so the homepage never renders empty before
@@ -94,6 +116,23 @@ export default async function HomePage() {
         ctaLabel={heroContent.ctaLabel}
         ctaHref={heroContent.ctaHref}
       />
+
+      <Section spacing="lg" className="bg-mist/40">
+        <div className="mb-8 flex items-end justify-between gap-4">
+          <h2 className="font-display text-ink text-3xl md:text-4xl">Shop by department</h2>
+        </div>
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+          {featuredDepartments.map((department) => (
+            <CollectionCard
+              key={department.slug}
+              slug={department.slug}
+              name={department.name}
+              image={department.image}
+              href={`/categories/${department.slug}`}
+            />
+          ))}
+        </div>
+      </Section>
 
       <Section spacing="lg">
         <div className="mb-8 flex items-end justify-between gap-4">

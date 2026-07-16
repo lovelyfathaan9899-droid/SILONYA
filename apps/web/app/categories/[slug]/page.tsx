@@ -57,7 +57,13 @@ export default async function CategoryPage({ params, searchParams }: PageProps) 
     notFound();
   }
 
-  const breadcrumbItems = [{ label: "Home", href: "/" }, { label: category.name }];
+  const breadcrumbItems = [
+    { label: "Home", href: "/" },
+    ...(category.parent
+      ? [{ label: category.parent.name, href: `/categories/${category.parent.slug}` }]
+      : []),
+    { label: category.name },
+  ];
 
   return (
     <Section spacing="lg">
@@ -70,6 +76,20 @@ export default async function CategoryPage({ params, searchParams }: PageProps) 
         <h1 className="font-display text-ink text-3xl md:text-4xl">{category.name}</h1>
         <SortSelect value={sort} />
       </div>
+
+      {category.children.length > 0 ? (
+        <div className="mb-8 flex flex-wrap gap-2">
+          {category.children.map((child) => (
+            <Link
+              key={child.slug}
+              href={`/categories/${child.slug}`}
+              className="border-mist text-ink hover:border-ink border px-4 py-2 font-sans text-sm transition-colors duration-150"
+            >
+              {child.name}
+            </Link>
+          ))}
+        </div>
+      ) : null}
 
       {products.items.length === 0 ? (
         <EmptyState

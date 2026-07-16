@@ -1,43 +1,34 @@
 import { Link2 } from "lucide-react";
 import type { FooterLinkColumn, FooterSocialLink, NavItem } from "@silonya/ui";
+import { departments } from "./departments";
 
-// Wired to the real seeded taxonomy (packages/database/prisma/seed-catalog.ts:
-// categories "women"/"men", collections "new-arrivals"/"best-sellers"/
-// "the-essentials"). Phase 3's richer sub-category columns (Dresses,
-// Outerwear, Bags, Jewelry, ...) are removed rather than left as "#"
-// placeholders — those categories don't exist in the catalog yet, and a
-// dead link fails PROJECT_RULES.md's production-ready bar. Add them back
-// once PRODUCT_SYSTEM.md's category tree grows past two top-level nodes.
-export const primaryNav: NavItem[] = [
-  {
-    label: "Women",
-    columns: [
-      {
-        heading: "Shop",
-        links: [
-          { label: "All Women", href: "/categories/women" },
-          { label: "New Arrivals", href: "/collections/new-arrivals" },
-          { label: "Best Sellers", href: "/collections/best-sellers" },
-          { label: "The Essentials", href: "/collections/the-essentials" },
-        ],
-      },
-    ],
-  },
-  {
-    label: "Men",
-    columns: [
-      {
-        heading: "Shop",
-        links: [
-          { label: "All Men", href: "/categories/men" },
-          { label: "New Arrivals", href: "/collections/new-arrivals" },
-          { label: "Best Sellers", href: "/collections/best-sellers" },
-          { label: "The Essentials", href: "/collections/the-essentials" },
-        ],
-      },
-    ],
-  },
+// Wired to the real seeded taxonomy (packages/database/prisma/seed-catalog.ts
+// DEPARTMENTS/SUBCATEGORIES, mirrored in lib/departments.ts) and the
+// existing curated collections. Each department gets a 2-column mega-menu
+// panel: "Shop" (every subcategory) and "Featured" (the same 3 collections
+// for every department, matching today's cross-department merchandising).
+const featuredCollectionLinks = [
+  { label: "New Arrivals", href: "/collections/new-arrivals" },
+  { label: "Best Sellers", href: "/collections/best-sellers" },
+  { label: "The Essentials", href: "/collections/the-essentials" },
 ];
+
+export const primaryNav: NavItem[] = departments.map((department) => ({
+  label: department.name,
+  columns: [
+    {
+      heading: "Shop",
+      links: [
+        { label: `All ${department.name}`, href: `/categories/${department.slug}` },
+        ...department.subcategories.map((sub) => ({
+          label: sub.name,
+          href: `/categories/${sub.slug}`,
+        })),
+      ],
+    },
+    { heading: "Featured", links: featuredCollectionLinks },
+  ],
+}));
 
 export const footerColumns: FooterLinkColumn[] = [
   {
