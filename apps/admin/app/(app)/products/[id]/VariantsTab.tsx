@@ -77,14 +77,14 @@ function AddVariantDialog({ product }: { product: ProductDetail }) {
         <div className="flex flex-col gap-4">
           {product.options.map((option) => (
             <div key={option.id} className="flex flex-col gap-2">
-              <Label>{option.name}</Label>
+              <Label htmlFor={`variant-option-${option.id}`}>{option.name}</Label>
               <Select
                 value={selectedValues[option.id] ?? ""}
                 onValueChange={(value) => {
                   setSelectedValues((prev) => ({ ...prev, [option.id]: value }));
                 }}
               >
-                <SelectTrigger>
+                <SelectTrigger id={`variant-option-${option.id}`}>
                   <SelectValue placeholder={`Select ${option.name.toLowerCase()}`} />
                 </SelectTrigger>
                 <SelectContent>

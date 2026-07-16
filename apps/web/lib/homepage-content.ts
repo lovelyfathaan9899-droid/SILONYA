@@ -1,11 +1,11 @@
-// Hardcoded homepage editorial content — analogous to real brand photography
-// and copy a CMS would serve. ADMIN_PANEL.md §4.6's lightweight content
-// editor isn't built yet (Phase 3+ per ROADMAP.md), so this is curated
-// directly in code for now, same pattern as lib/nav-data.ts.
+// Hardcoded fallback homepage editorial content — used by apps/web/app/page.tsx
+// only when the corresponding ContentBlock is missing/inactive in the CMS
+// (ADMIN_PANEL.md §4.6, packages/api/src/routers/cms.ts's homepageContent),
+// so the homepage never renders empty before that content is seeded/edited.
 
 export const hero = {
   image: {
-    url: "https://placehold.co/1920x1400/e7e4de/111111?text=SILONYA",
+    url: "https://placehold.co/1920x1400/e7e4de/111111.png?text=SILONYA",
     altText: "SILONYA Autumn collection editorial photograph",
   },
   eyebrow: "Autumn 2026",
@@ -17,7 +17,7 @@ export const hero = {
 
 export const editorial = {
   image: {
-    url: "https://placehold.co/1200x1500/e7e4de/111111?text=SILONYA+Journal",
+    url: "https://placehold.co/1200x1500/e7e4de/111111.png?text=SILONYA+Journal",
     altText: "Behind the making of a SILONYA wool coat",
   },
   eyebrow: "The Journal",

@@ -190,7 +190,11 @@ const PRODUCTS: SeedProduct[] = [
 ];
 
 function placeholderImageUrl(seed: string, index: number): string {
-  return `https://placehold.co/1200x1500/e7e4de/111111?text=${encodeURIComponent(seed)}+${String(index + 1)}`;
+  // ".png" is required — placehold.co defaults to SVG without an explicit
+  // raster extension, and Next.js's image optimizer refuses to optimize
+  // SVG by default (dangerouslyAllowSVG), which broke every seeded product
+  // image in production (found via a Lighthouse/production-server audit).
+  return `https://placehold.co/1200x1500/e7e4de/111111.png?text=${encodeURIComponent(seed)}+${String(index + 1)}`;
 }
 
 /** Looks up a value seeded earlier in this same run — a miss means the static PRODUCTS data references a slug that doesn't exist in CATEGORIES/COLLECTIONS/options, a bug in the seed data itself. */

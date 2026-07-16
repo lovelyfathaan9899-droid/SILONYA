@@ -33,7 +33,7 @@ export function SortSelect({ value }: { value: string }) {
         router.push(query ? `${pathname}?${query}` : pathname);
       }}
     >
-      <SelectTrigger className="w-48">
+      <SelectTrigger className="w-48" aria-label="Sort products">
         <SelectValue placeholder="Sort" />
       </SelectTrigger>
       <SelectContent>

@@ -68,7 +68,7 @@ export function HeaderActions() {
       <Link
         href={loggedIn ? "/account" : "/login"}
         aria-label={loggedIn ? "Your account" : "Sign in"}
-        className="text-ink focus-visible:ring-ink flex h-11 w-11 items-center justify-center focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2"
+        className="text-ink focus-visible:ring-ink flex h-11 w-11 shrink-0 items-center justify-center focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2"
       >
         <Icon icon={User} size={20} />
       </Link>
@@ -79,7 +79,7 @@ export function HeaderActions() {
         onClick={() => {
           setSearchOpen(true);
         }}
-        className="text-ink focus-visible:ring-ink flex h-11 w-11 items-center justify-center focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2"
+        className="text-ink focus-visible:ring-ink flex h-11 w-11 shrink-0 items-center justify-center focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2"
       >
         <Icon icon={Search} size={20} />
       </button>
@@ -88,7 +88,7 @@ export function HeaderActions() {
         type="button"
         aria-label={`Bag, ${String(cartCount)} item${cartCount === 1 ? "" : "s"}`}
         onClick={openCart}
-        className="text-ink focus-visible:ring-ink relative flex h-11 w-11 items-center justify-center focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2"
+        className="text-ink focus-visible:ring-ink relative flex h-11 w-11 shrink-0 items-center justify-center focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2"
       >
         <Icon icon={ShoppingBag} size={20} />
         {cartCount > 0 ? (

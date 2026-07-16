@@ -45,7 +45,7 @@ export function Header({ logo, items, actions, linkAs = "a", className }: Header
               setMobileOpen(true);
             }}
             className={cn(
-              "text-ink -ml-2 flex h-11 w-11 items-center justify-center lg:hidden",
+              "text-ink -ml-2 flex h-11 w-11 shrink-0 items-center justify-center lg:hidden",
               "focus-visible:ring-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2",
             )}
           >
@@ -58,7 +58,17 @@ export function Header({ logo, items, actions, linkAs = "a", className }: Header
             <DesktopNav items={items} linkAs={linkAs} />
           </div>
 
-          <div className="flex items-center justify-end gap-1 lg:flex-1">{actions}</div>
+          {/* shrink-0: icon buttons here are fixed-size interactive touch
+              targets (44px, PROJECT_RULES.md §7 / WCAG 2.5.8) — they must
+              never be compressed by flexbox's default shrink behavior when
+              the row is tight (found via a Lighthouse mobile audit — the
+              menu button was shrinking to a 22px hit target on narrow
+              viewports). The logo above deliberately keeps flexbox's
+              default `min-width: auto` (content-based) rather than
+              `min-w-0` — that default is what reserves enough space for the
+              "SILONYA" wordmark instead of letting it visually overflow
+              into the now-protected button next to it. */}
+          <div className="flex shrink-0 items-center justify-end gap-1 lg:flex-1">{actions}</div>
         </div>
       </Container>
 

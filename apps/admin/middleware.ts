@@ -6,7 +6,7 @@ import { NextResponse, type NextRequest } from "next/server";
 // only one: every adminProcedure re-checks the session server-side
 // (packages/api/src/trpc.ts), and permission-gated procedures re-check
 // RBAC against the database (SECURITY_ARCHITECTURE.md §1, defense in depth).
-const PUBLIC_PATHS = ["/login", "/api/health"];
+const PUBLIC_PATHS = ["/login", "/api/health", "/robots.txt"];
 
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
