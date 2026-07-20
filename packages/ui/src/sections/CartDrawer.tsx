@@ -76,6 +76,9 @@ export function CartDrawer({
                   <li key={line.variantId} className="flex gap-4">
                     <Link
                       href={`/products/${line.productSlug}`}
+                      onClick={() => {
+                        onOpenChange(false);
+                      }}
                       className="bg-mist relative h-24 w-20 shrink-0 overflow-hidden"
                     >
                       {line.imageUrl ? (
@@ -91,6 +94,9 @@ export function CartDrawer({
                     <div className="flex flex-1 flex-col gap-1">
                       <Link
                         href={`/products/${line.productSlug}`}
+                        onClick={() => {
+                          onOpenChange(false);
+                        }}
                         className="text-ink font-sans text-sm hover:underline"
                       >
                         {line.productName}
@@ -153,10 +159,24 @@ export function CartDrawer({
               </p>
               <div className="flex flex-col gap-2">
                 <Button asChild className="w-full">
-                  <Link href="/checkout">Checkout</Link>
+                  <Link
+                    href="/checkout"
+                    onClick={() => {
+                      onOpenChange(false);
+                    }}
+                  >
+                    Checkout
+                  </Link>
                 </Button>
                 <Button asChild variant="secondary" className="w-full">
-                  <Link href="/cart">View bag</Link>
+                  <Link
+                    href="/cart"
+                    onClick={() => {
+                      onOpenChange(false);
+                    }}
+                  >
+                    View bag
+                  </Link>
                 </Button>
               </div>
             </div>

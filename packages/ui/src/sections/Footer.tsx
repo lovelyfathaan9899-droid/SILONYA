@@ -99,7 +99,7 @@ export function Footer({
               </p>
               <ul className="flex flex-col gap-2">
                 {column.links.map((link) => (
-                  <li key={link.href}>
+                  <li key={link.label}>
                     <LinkComponent
                       href={link.href}
                       className="text-ink hover:text-accent font-sans text-sm transition-colors duration-150"
@@ -121,7 +121,7 @@ export function Footer({
           {legalLinks && legalLinks.length > 0 ? (
             <ul className="flex flex-wrap gap-4">
               {legalLinks.map((link) => (
-                <li key={link.href}>
+                <li key={link.label}>
                   <LinkComponent
                     href={link.href}
                     className="text-stone hover:text-ink font-sans text-xs transition-colors duration-150"
@@ -136,7 +136,7 @@ export function Footer({
           {socialLinks && socialLinks.length > 0 ? (
             <ul className="flex items-center gap-3">
               {socialLinks.map((social) => (
-                <li key={social.href}>
+                <li key={social.label}>
                   <LinkComponent
                     href={social.href}
                     aria-label={social.label}
