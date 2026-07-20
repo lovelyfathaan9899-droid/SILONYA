@@ -29,6 +29,8 @@ export interface SearchResultItem {
   currency: string;
   image: { url: string; altText: string } | null;
   available: boolean;
+  /** Populated on the Postgres path; the Meilisearch document schema (search-index.ts) doesn't carry it yet, so this is always null on that path until it's added there too. */
+  compareAtPrice: number | null;
 }
 
 export interface FacetCounts {
@@ -81,6 +83,7 @@ async function searchViaMeilisearch(input: z.infer<typeof searchInput>) {
     currency: "USD",
     image: hit.imageUrl ? { url: hit.imageUrl, altText: hit.name } : null,
     available: hit.available,
+    compareAtPrice: null,
   }));
 
   const facetDistribution = result.facetDistribution as
@@ -220,6 +223,7 @@ async function searchViaPostgres(input: z.infer<typeof searchInput>) {
       currency: product.currency,
       image: product.media[0] ?? null,
       available: product.variants.some((v) => variantAvailable(v.inventory)),
+      compareAtPrice: product.variants.find((v) => v.compareAtPrice)?.compareAtPrice ?? null,
     };
   });
 
