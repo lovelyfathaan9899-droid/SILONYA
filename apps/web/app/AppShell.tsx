@@ -19,9 +19,13 @@ export interface FooterSection {
 // This wrapper exists purely to keep that prop-passing on the client side of
 // the boundary; layout.tsx stays a Server Component so it can still export
 // `metadata`.
+// Tracking widened to ~10% of type size (tracking-widest) rather than the
+// prior tracking-wide — a wordmark-only logo (identity strategy: no mascot,
+// see the brand identity artifact) relies on open tracking for its presence,
+// since there's no accompanying symbol to carry visual weight.
 function Wordmark() {
   return (
-    <Link href="/" className="font-display text-ink text-xl tracking-wide">
+    <Link href="/" className="font-display text-ink text-xl tracking-widest">
       SILONYA
     </Link>
   );

@@ -51,7 +51,7 @@ export function AdminShell({ children, adminEmail, adminRole }: AdminShellProps)
     <div className="flex min-h-screen">
       <aside className="border-mist flex w-60 shrink-0 flex-col border-r bg-white">
         <div className="border-mist border-b px-6 py-5">
-          <span className="font-display text-ink text-lg">SILONYA</span>
+          <span className="font-display text-ink text-lg tracking-widest">SILONYA</span>
           <span className="text-stone ml-2 font-sans text-xs uppercase tracking-wide">Admin</span>
         </div>
 
