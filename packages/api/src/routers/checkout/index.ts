@@ -10,7 +10,11 @@ import { getStripeClient } from "../../lib/stripe";
 import { checkRateLimit } from "../../lib/rate-limit";
 import { siteUrl } from "../../lib/site-url";
 import { toOrderEmailData } from "../../lib/order-email-mapper";
-import { finalizeReservation, releaseReservation } from "../../services/inventory";
+import {
+  finalizeReservation,
+  releaseReservation,
+  reserveInventory,
+} from "../../services/inventory";
 import { findRedeemableGiftCard } from "../gift-cards";
 import {
   CURRENCY,
@@ -163,14 +167,13 @@ export const checkoutRouter = router({
         return prisma.$transaction(
           async (tx) => {
             for (const item of input.items) {
-              const affected = await tx.$executeRaw`
-              UPDATE inventory
-              SET quantity_reserved = quantity_reserved + ${item.quantity}
-              WHERE variant_id = ${item.variantId}
-                AND warehouse_id = ${warehouseId}
-                AND quantity_on_hand - quantity_reserved >= ${item.quantity}
-            `;
-              if (affected === 0) {
+              const reserved = await reserveInventory(
+                tx,
+                item.variantId,
+                warehouseId,
+                item.quantity,
+              );
+              if (!reserved) {
                 throw new TRPCError({
                   code: "CONFLICT",
                   message: "One or more items just sold out. Please review your bag.",

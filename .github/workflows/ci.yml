@@ -72,3 +72,66 @@ jobs:
 
       - name: Build
         run: pnpm build
+
+  integration-test:
+    name: Integration tests (real Postgres)
+    runs-on: ubuntu-latest
+    # TESTING_STRATEGY.md §4 specifies a Neon branch spun up per CI run;
+    # this repo has no Neon API token to automate that, so a disposable
+    # postgres:16 service container stands in — same properties that
+    # actually matter (real Postgres, ephemeral, migrated fresh every run),
+    # just not literally a Neon branch. Revisit if/when a Neon API token is
+    # available.
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: silonya
+          POSTGRES_PASSWORD: silonya
+          POSTGRES_DB: silonya_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    env:
+      DATABASE_URL: "postgresql://silonya:silonya@localhost:5432/silonya_ci?schema=public"
+      DIRECT_URL: "postgresql://silonya:silonya@localhost:5432/silonya_ci?schema=public"
+      TEST_DATABASE_URL: "postgresql://silonya:silonya@localhost:5432/silonya_test?schema=public"
+      TEST_DIRECT_URL: "postgresql://silonya:silonya@localhost:5432/silonya_test?schema=public"
+      AUTH_SECRET: "ci-only-secret-not-used-for-anything-real"
+      NEXT_PUBLIC_APP_URL: "http://localhost:3000"
+      NEXT_PUBLIC_ADMIN_URL: "http://localhost:3001"
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version-file: ".nvmrc"
+          cache: "pnpm"
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Write .env for local tooling
+        run: |
+          cat <<EOF > .env
+          DATABASE_URL=$DATABASE_URL
+          DIRECT_URL=$DIRECT_URL
+          TEST_DATABASE_URL=$TEST_DATABASE_URL
+          TEST_DIRECT_URL=$TEST_DIRECT_URL
+          AUTH_SECRET=$AUTH_SECRET
+          EOF
+
+      - name: Generate Prisma client
+        run: pnpm db:generate
+
+      - name: Run integration tests
+        run: pnpm test:integration

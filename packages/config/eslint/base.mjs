@@ -25,10 +25,13 @@ const defaultProjectFiles = [
   "*.config.mjs",
   "*.config.js",
   "eslint.config.mjs",
-  "vitest.config.ts",
-  "packages/*/vitest.config.ts",
-  "apps/*/vitest.config.ts",
+  "vitest*.config.ts",
+  "packages/*/vitest*.config.ts",
+  "apps/*/vitest*.config.ts",
   "packages/config/vitest/base.ts",
+  "scripts/*.mjs",
+  "packages/*/scripts/*.mjs",
+  "apps/*/scripts/*.mjs",
 ];
 
 export const baseConfig = tseslint.config(

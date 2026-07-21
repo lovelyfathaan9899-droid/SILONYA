@@ -2,6 +2,32 @@ import type { Prisma } from "@silonya/database";
 
 type Tx = Prisma.TransactionClient;
 
+/**
+ * Checkout-time reservation (PRODUCT_SYSTEM.md §4.3 — oversell prevention).
+ * A single conditional UPDATE, not a read-then-write, so concurrent
+ * checkouts against the same limited stock can never together reserve more
+ * than what's on hand: Postgres row-level locking serializes concurrent
+ * UPDATEs to the same inventory row, and the `WHERE` clause re-checks
+ * availability atomically with the increment. An affected-row count of 0
+ * means "not enough stock left" — the caller decides how to surface that
+ * (checkout.createIntent turns it into a user-facing CONFLICT).
+ */
+export async function reserveInventory(
+  tx: Tx,
+  variantId: string,
+  warehouseId: string,
+  quantity: number,
+): Promise<boolean> {
+  const affected = await tx.$executeRaw`
+    UPDATE inventory
+    SET quantity_reserved = quantity_reserved + ${quantity}
+    WHERE variant_id = ${variantId}
+      AND warehouse_id = ${warehouseId}
+      AND quantity_on_hand - quantity_reserved >= ${quantity}
+  `;
+  return affected > 0;
+}
+
 /** PRODUCT_SYSTEM.md §4.2 — payment succeeded: decrement quantityOnHand and release the matching reservation. */
 export async function finalizeReservation(
   tx: Tx,

@@ -46,10 +46,14 @@ Defines how correctness is verified across the SILONYA codebase, enforcing the q
 
 ## 4. Integration Testing
 
+> **Implementation status:** started. `packages/api/vitest.integration.config.ts` runs real-Postgres tests (`**/*.integration.test.ts`, `pnpm test:integration`) against `TEST_DATABASE_URL`/`TEST_DIRECT_URL`, with `src/test/db.ts`'s `resetDatabase()` truncating every table between tests (not a per-test transaction rollback — the concurrency tests below need genuinely committed rows for separate connections to race against) and `src/test/setup-integration.ts` refusing to run unless that URL's name/host contains "test", as a guard against ever truncating the dev/prod database. Covered so far: `services/inventory.ts`'s `reserveInventory` (the oversell-prevention primitive) and `checkout.createIntent` end-to-end, both including the concurrency case below. Not yet covered: the rest of the mutating procedures this section calls for, and the webhook-handler tests in the bullet below.
+>
+> **CI database, revised:** this section originally specified a Neon branch spun up per CI run. No Neon API token is available in this environment to automate that, so CI (`.github/workflows/ci.yml`'s `integration-test` job) uses a disposable `postgres:16` service container instead — same properties that actually matter for this layer (real Postgres, ephemeral, migrated fresh every run), just not literally a Neon branch. Locally, `TEST_DATABASE_URL`/`TEST_DIRECT_URL` point at a dedicated `silonya_test` database on the same Neon project as dev (pooled/direct split, same reasoning as `DATABASE_URL`/`DIRECT_URL`) — see `.env.example`. Revisit the CI approach if/when a Neon API token is available.
+
 - Every tRPC procedure that mutates data (`cart.addItem`, `checkout.createIntent`, `admin.orders.updateStatus`, etc.) has an integration test exercising it against a real (ephemeral, seeded) Postgres database — not a mocked DB, since the risk we're protecting against (DATABASE_ARCHITECTURE.md §5's transactional guarantees, oversell prevention) only manifests against real transactional behavior.
 - **Concurrency tests** specifically target the oversell-prevention logic (PRODUCT_SYSTEM.md §4.3): simulate concurrent checkout attempts against limited stock and assert exactly the available quantity succeeds, never more.
 - **Webhook handlers** (PAYMENT_ARCHITECTURE.md §3) are tested with recorded/representative Stripe event payloads, including idempotency (replaying the same event twice produces no duplicate side effects) and signature-rejection cases.
-- Test database is a Neon branch spun up per CI run (mirroring the preview-environment pattern in TECH_STACK.md §6) — isolated, disposable, always migrated to the current schema.
+- Test database is a Neon branch spun up per CI run (mirroring the preview-environment pattern in TECH_STACK.md §6) — isolated, disposable, always migrated to the current schema. **Revised in CI, see the implementation-status note above** — a `postgres:16` service container is used instead, for lack of Neon API automation access.
 
 ---
 
