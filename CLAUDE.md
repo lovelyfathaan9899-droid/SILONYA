@@ -14,13 +14,14 @@ A premium global fashion e-commerce platform, single-brand D2C, built as a custo
 
 Before making any non-trivial decision, consult the relevant document rather than inferring from general best practices:
 
-| Question                                                        | Document                               |
-| --------------------------------------------------------------- | -------------------------------------- |
-| "What are we building and for whom?"                            | [README.md](./README.md)               |
-| "What tech/library/pattern should I use?"                       | [TECH_STACK.md](./TECH_STACK.md)       |
-| "How should this component/file/branch be structured or named?" | [PROJECT_RULES.md](./PROJECT_RULES.md) |
-| "What should this look/feel like?"                              | [DESIGN_SYSTEM.md](./DESIGN_SYSTEM.md) |
-| "Is this in scope for the current phase?"                       | [ROADMAP.md](./ROADMAP.md)             |
+| Question                                                        | Document                                     |
+| --------------------------------------------------------------- | -------------------------------------------- |
+| "What are we building and for whom?"                            | [README.md](./README.md)                     |
+| "What tech/library/pattern should I use?"                       | [TECH_STACK.md](./TECH_STACK.md)             |
+| "How should this component/file/branch be structured or named?" | [PROJECT_RULES.md](./PROJECT_RULES.md)       |
+| "What should this look/feel like?"                              | [DESIGN_SYSTEM.md](./DESIGN_SYSTEM.md)       |
+| "Is this in scope for the current phase?"                       | [ROADMAP.md](./ROADMAP.md)                   |
+| "How should this be tested?"                                    | [TESTING_STRATEGY.md](./TESTING_STRATEGY.md) |
 
 If a task conflicts with one of these documents, flag the conflict to the user rather than silently picking one side.
 
@@ -28,7 +29,7 @@ If a task conflicts with one of these documents, flag the conflict to the user r
 
 ## Current Project Status
 
-**Phase 2/3 (in progress) — MVP Storefront + Growth Features.** The monorepo, admin catalog/order/customer/review/discount/gift-card/content/analytics management, guest+account checkout (Stripe test mode), search (Meilisearch-ready with a Postgres fallback), a lightweight CMS (hero/promo/editorial blocks, static/editorial/lookbook pages, FAQ, footer), admin analytics/reports (CSV/Excel), and the customer-facing storefront (browsing, accounts, wishlist, reviews, coupons, gift cards, search, CMS pages) are all built and runtime-verified against a real Neon Postgres database. Security headers (CSP/HSTS), in-memory rate limiting, error boundaries, and health-check endpoints are live on both apps. Check [ROADMAP.md](./ROADMAP.md) for the authoritative, up-to-date checklist of what's done vs. outstanding per phase — verify against the actual repository state rather than trusting this file's memory of it, since this file is not guaranteed to be updated the moment the phase changes. Notable gaps as of the last update: a real Meilisearch/Redis/PostHog/Sentry instance (all code-ready, none provisioned in this environment), Google/Apple OAuth (needs real provider credentials), Resend (email sending stubbed/logged pending an API key), Core Web Vitals/accessibility audits, nonce-based CSP script-src, and a formal pre-launch security review.
+**Phase 2/3 (in progress) — MVP Storefront + Growth Features.** The monorepo, admin catalog/order/customer/review/discount/gift-card/content/analytics management, guest+account checkout (Stripe test mode), search (Meilisearch-ready with a Postgres fallback), a lightweight CMS (hero/promo/editorial blocks, static/editorial/lookbook pages, FAQ, footer), admin analytics/reports (CSV/Excel), and the customer-facing storefront (browsing, accounts, wishlist, reviews, coupons, gift cards, search, CMS pages) are all built and runtime-verified against a real Neon Postgres database. Security headers (CSP/HSTS), in-memory rate limiting, error boundaries, and health-check endpoints are live on both apps. Check [ROADMAP.md](./ROADMAP.md) for the authoritative, up-to-date checklist of what's done vs. outstanding per phase — verify against the actual repository state rather than trusting this file's memory of it, since this file is not guaranteed to be updated the moment the phase changes. Notable gaps as of the last update: a real Meilisearch/Redis/PostHog/Sentry instance (all code-ready, none provisioned in this environment), Google/Apple OAuth (needs real provider credentials), Resend (email sending stubbed/logged pending an API key), Core Web Vitals/accessibility audits, nonce-based CSP script-src, and a formal pre-launch security review. Testing (`testing-foundation` tag): Vitest is wired in with unit coverage of the money-critical logic in `packages/utils`/`packages/api` (TESTING_STRATEGY.md §3) — do not assume this means broader coverage exists; the integration (§4), E2E (§5), accessibility (§6), Lighthouse (§7), and visual-regression (§8) layers of that doc's pyramid are still unbuilt, and most business logic elsewhere in the codebase (including all of `apps/web`/`apps/admin`) remains untested.
 
 **Standing rule:** the documentation-only gate has passed — application code is expected. Still check the roadmap phase before building something out of order (e.g., a Phase 4 multi-currency feature while Phase 2 exit criteria remain open).
 
