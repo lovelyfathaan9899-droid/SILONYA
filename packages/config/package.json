@@ -2,6 +2,7 @@
   "name": "@silonya/config",
   "version": "0.0.0",
   "private": true,
+  "type": "module",
   "description": "Shared TypeScript, ESLint, Prettier, and Tailwind configuration for all SILONYA apps and packages",
   "exports": {
     "./typescript/base.json": "./typescript/base.json",
@@ -9,12 +10,14 @@
     "./eslint/base": "./eslint/base.mjs",
     "./eslint/react": "./eslint/react.mjs",
     "./eslint/next": "./eslint/next.mjs",
+    "./vitest/base": "./vitest/base.ts",
     "./prettier": "./prettier/index.mjs",
     "./tailwind/tokens.css": "./tailwind/tokens.css"
   },
   "dependencies": {
     "@eslint/js": "^9.17.0",
     "@next/eslint-plugin-next": "^15.1.0",
+    "@vitest/eslint-plugin": "^1.6.23",
     "eslint-config-prettier": "^9.1.0",
     "eslint-plugin-jsx-a11y": "^6.10.0",
     "eslint-plugin-react": "^7.37.0",
@@ -26,6 +29,10 @@
   "peerDependencies": {
     "eslint": "^9.0.0",
     "prettier": "^3.0.0",
-    "typescript": "^5.0.0"
+    "typescript": "^5.0.0",
+    "vitest": "^3.0.0"
+  },
+  "devDependencies": {
+    "vitest": "^3.2.7"
   }
 }
