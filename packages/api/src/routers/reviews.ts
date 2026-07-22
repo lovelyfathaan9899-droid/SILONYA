@@ -202,13 +202,22 @@ export const reviewsRouter = router({
     });
   }),
 
+  /**
+   * `allowed_formats` is part of the signed payload, not just a client-side
+   * hint — the upload request to Cloudinary must supply the exact same
+   * params to match this signature, and Cloudinary itself rejects any
+   * other format/resource type server-side. Without this, any authenticated
+   * customer could sign an upload of any file type/size to this folder.
+   */
   getUploadSignature: customerProcedure.mutation(() => {
     const { cloudName, apiKey, apiSecret } = requireCloudinaryEnv();
     const timestamp = Math.round(Date.now() / 1000);
-    const signature = cloudinary.utils.api_sign_request(
-      { timestamp, folder: REVIEW_UPLOAD_FOLDER },
-      apiSecret,
-    );
-    return { timestamp, signature, apiKey, cloudName, folder: REVIEW_UPLOAD_FOLDER };
+    const params = {
+      timestamp,
+      folder: REVIEW_UPLOAD_FOLDER,
+      allowed_formats: "jpg,jpeg,png,webp,avif",
+    };
+    const signature = cloudinary.utils.api_sign_request(params, apiSecret);
+    return { ...params, signature, apiKey, cloudName };
   }),
 });

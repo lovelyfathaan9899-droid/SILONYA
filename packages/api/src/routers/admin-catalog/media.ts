@@ -1,4 +1,4 @@
-import { prisma } from "@silonya/database";
+import { prisma, Prisma } from "@silonya/database";
 import { TRPCError } from "@trpc/server";
 import { v2 as cloudinary } from "cloudinary";
 import { z } from "zod";
@@ -36,12 +36,18 @@ export const mediaRouter = {
     const { cloudName, apiKey, apiSecret } = requireCloudinaryEnv();
     const timestamp = Math.round(Date.now() / 1000);
 
-    const signature = cloudinary.utils.api_sign_request(
-      { timestamp, folder: UPLOAD_FOLDER },
-      apiSecret,
-    );
+    // `allowed_formats` is part of the signed payload — the upload request
+    // must supply the exact same params to match this signature, and
+    // Cloudinary rejects any other format server-side. Without this, any
+    // catalog:write admin could sign an upload of any file type/size.
+    const params = {
+      timestamp,
+      folder: UPLOAD_FOLDER,
+      allowed_formats: "jpg,jpeg,png,webp,avif",
+    };
+    const signature = cloudinary.utils.api_sign_request(params, apiSecret);
 
-    return { timestamp, signature, apiKey, cloudName, folder: UPLOAD_FOLDER };
+    return { ...params, signature, apiKey, cloudName };
   }),
 
   attachMedia: catalogWrite
@@ -73,7 +79,14 @@ export const mediaRouter = {
   deleteMedia: catalogWrite
     .input(z.object({ id: z.string().uuid() }))
     .mutation(async ({ input }) => {
-      await prisma.productMedia.delete({ where: { id: input.id } });
+      try {
+        await prisma.productMedia.delete({ where: { id: input.id } });
+      } catch (error) {
+        if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2025") {
+          throw new TRPCError({ code: "NOT_FOUND", message: "Image not found." });
+        }
+        throw error;
+      }
       return { success: true };
     }),
 };

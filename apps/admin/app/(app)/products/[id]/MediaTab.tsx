@@ -24,6 +24,7 @@ async function uploadToCloudinary(
     apiKey: string;
     cloudName: string;
     folder: string;
+    allowed_formats: string;
   },
 ): Promise<string> {
   const formData = new FormData();
@@ -32,6 +33,10 @@ async function uploadToCloudinary(
   formData.append("timestamp", String(signature.timestamp));
   formData.append("signature", signature.signature);
   formData.append("folder", signature.folder);
+  // Must match the params the signature was computed over exactly
+  // (packages/api/src/routers/admin-catalog/media.ts's getUploadSignature)
+  // — Cloudinary rejects the upload if these params differ.
+  formData.append("allowed_formats", signature.allowed_formats);
 
   const response = await fetch(
     `https://api.cloudinary.com/v1_1/${signature.cloudName}/image/upload`,
