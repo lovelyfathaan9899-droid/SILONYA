@@ -4,6 +4,7 @@ import { notFound } from "next/navigation";
 import { Section } from "@silonya/ui";
 import { createServerCaller } from "@/lib/trpc-caller";
 import { SITE_URL } from "@/lib/site-config";
+import { toJsonLdString } from "@/lib/json-ld";
 
 export const revalidate = 3600;
 
@@ -68,7 +69,7 @@ export default async function LookbookPage({ params }: PageProps) {
     <>
       <script
         type="application/ld+json"
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbJsonLd) }}
+        dangerouslySetInnerHTML={{ __html: toJsonLdString(breadcrumbJsonLd) }}
       />
       {page.heroImageUrl ? (
         <div className="relative aspect-[16/9] w-full">

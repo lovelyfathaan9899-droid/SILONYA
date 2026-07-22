@@ -8,6 +8,7 @@ import {
   Section,
 } from "@silonya/ui";
 import { createServerCaller } from "@/lib/trpc-caller";
+import { toJsonLdString } from "@/lib/json-ld";
 
 export const revalidate = 3600;
 
@@ -39,7 +40,7 @@ export default async function FaqPage() {
       {categories.length > 0 ? (
         <script
           type="application/ld+json"
-          dangerouslySetInnerHTML={{ __html: JSON.stringify(faqJsonLd) }}
+          dangerouslySetInnerHTML={{ __html: toJsonLdString(faqJsonLd) }}
         />
       ) : null}
       <h1 className="font-display text-ink mb-8 text-3xl md:text-4xl">

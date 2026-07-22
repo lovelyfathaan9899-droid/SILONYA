@@ -33,7 +33,11 @@ export async function loginAction(_prevState: LoginState, formData: FormData): P
   }
 
   const next = formData.get("next");
-  const redirectTo = typeof next === "string" && next.startsWith("/") ? next : "/account";
+  // "/" alone isn't enough — "//evil.com" and "/\evil.com" both start with
+  // "/" but browsers resolve them as protocol-relative off-site URLs
+  // (CWE-601 open redirect right after a sensitive auth event).
+  const redirectTo =
+    typeof next === "string" && next.startsWith("/") && !/^\/[\\/]/.test(next) ? next : "/account";
 
   try {
     const caller = createServerCaller();

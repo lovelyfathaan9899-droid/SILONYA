@@ -5,6 +5,24 @@ import type { Context } from "./context";
 
 const t = initTRPC.context<Context>().create({
   transformer: superjson,
+  /**
+   * @trpc/server's getErrorShape gates `shape.data.stack` behind dev mode,
+   * but NOT `shape.message` — for any unhandled (non-TRPCError) exception,
+   * getTRPCErrorFromUnknown wraps it as INTERNAL_SERVER_ERROR with
+   * `message` falling back to the original error's `.message`, which then
+   * reaches the client unchanged in every environment. That's a raw Prisma
+   * constraint message, a Stripe SDK error, a DB-unreachable message, etc.
+   * — real internal detail, not something a bug should hand an attacker.
+   * Deliberately-thrown TRPCErrors with any other code are authored,
+   * safe-to-display messages ("That discount code isn't valid.") and pass
+   * through unchanged.
+   */
+  errorFormatter({ shape, error }) {
+    if (process.env.NODE_ENV === "production" && error.code === "INTERNAL_SERVER_ERROR") {
+      return { ...shape, message: "Something went wrong. Please try again." };
+    }
+    return shape;
+  },
 });
 
 export const router = t.router;

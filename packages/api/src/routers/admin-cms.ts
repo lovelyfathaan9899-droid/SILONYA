@@ -10,6 +10,33 @@ const CONTENT_BLOCK_TYPE = z.enum(["hero", "promo_banner", "editorial"]);
 const PAGE_TYPE = z.enum(["editorial", "lookbook", "static_page"]);
 const PAGE_STATUS = z.enum(["draft", "published"]);
 
+// Unlike imageUrl (z.string().url()), these render as a real <Link href>/
+// <a href> on public storefront pages (Hero CTA, footer) — a bare
+// z.string() lets an admin store `javascript:...`, which then executes for
+// every visitor who clicks it (stored XSS, SECURITY_ARCHITECTURE.md §3.2).
+// Only relative paths and http(s) URLs are accepted.
+const SAFE_HREF_PATTERN = /^\/|^https?:\/\//i;
+
+/** ctaHref is optional and, per the Hero/EditorialSection components' `ctaLabel && ctaHref` check, an empty string is the "no CTA" state — allowed here, everything else must be a safe scheme. */
+const SAFE_HREF_OPTIONAL = z
+  .string()
+  .trim()
+  .max(300)
+  .refine(
+    (value) => value === "" || SAFE_HREF_PATTERN.test(value),
+    "Must be a relative path (starting with /) or an http(s) URL.",
+  );
+
+const SAFE_HREF_REQUIRED = z
+  .string()
+  .trim()
+  .min(1)
+  .max(300)
+  .refine(
+    (value) => SAFE_HREF_PATTERN.test(value),
+    "Must be a relative path (starting with /) or an http(s) URL.",
+  );
+
 /**
  * ADMIN_PANEL.md §4.6 — structured-content editor (hero/promo/editorial
  * singletons, editorial/lookbook/static pages, FAQ, footer links), not a
@@ -35,7 +62,7 @@ export const adminCmsRouter = router({
           imageUrl: z.string().url().optional(),
           imageAlt: z.string().trim().max(200).optional(),
           ctaLabel: z.string().trim().max(60).optional(),
-          ctaHref: z.string().trim().max(300).optional(),
+          ctaHref: SAFE_HREF_OPTIONAL.optional(),
           isActive: z.boolean().default(true),
         }),
       )
@@ -239,7 +266,7 @@ export const adminCmsRouter = router({
         z.object({
           section: z.string().trim().min(1).max(60),
           label: z.string().trim().min(1).max(100),
-          href: z.string().trim().min(1).max(300),
+          href: SAFE_HREF_REQUIRED,
         }),
       )
       .mutation(async ({ input }) => {
@@ -258,7 +285,7 @@ export const adminCmsRouter = router({
           id: z.string().uuid(),
           section: z.string().trim().min(1).max(60).optional(),
           label: z.string().trim().min(1).max(100).optional(),
-          href: z.string().trim().min(1).max(300).optional(),
+          href: SAFE_HREF_REQUIRED.optional(),
           position: z.number().int().min(0).optional(),
           isActive: z.boolean().optional(),
         }),

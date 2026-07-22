@@ -41,7 +41,12 @@ export interface FacetCounts {
 }
 
 function escapeFilterValue(value: string): string {
-  return value.replace(/"/g, '\\"');
+  // Backslash must be escaped first — otherwise a value ending in a lone
+  // "\" (e.g. `category=foo\`) escapes the filter string's closing quote
+  // instead of being escaped itself, breaking out of the intended
+  // `category = "..."` clause and letting arbitrary Meilisearch filter
+  // syntax through (e.g. bypassing the `available = true` clause).
+  return value.replace(/\\/g, "\\\\").replace(/"/g, '\\"');
 }
 
 async function searchViaMeilisearch(input: z.infer<typeof searchInput>) {

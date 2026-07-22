@@ -5,6 +5,7 @@ import { AppShell } from "./AppShell";
 import { getCustomerContext } from "@/lib/customer-context";
 import { createServerCaller } from "@/lib/trpc-caller";
 import { SITE_NAME, SITE_URL } from "@/lib/site-config";
+import { toJsonLdString } from "@/lib/json-ld";
 import "./globals.css";
 
 const description =
@@ -44,7 +45,7 @@ export default async function RootLayout({ children }: { children: ReactNode }) 
         <ThemeScript />
         <script
           type="application/ld+json"
-          dangerouslySetInnerHTML={{ __html: JSON.stringify(organizationJsonLd) }}
+          dangerouslySetInnerHTML={{ __html: toJsonLdString(organizationJsonLd) }}
         />
       </head>
       <body className="bg-bone text-ink flex min-h-screen flex-col">

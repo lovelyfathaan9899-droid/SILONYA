@@ -4,6 +4,7 @@ import { notFound } from "next/navigation";
 import { Section } from "@silonya/ui";
 import { createServerCaller } from "@/lib/trpc-caller";
 import { SITE_URL } from "@/lib/site-config";
+import { toJsonLdString } from "@/lib/json-ld";
 
 export const revalidate = 3600;
 
@@ -67,7 +68,7 @@ export default async function StaticOrEditorialPage({ params }: PageProps) {
     <Section spacing="lg">
       <script
         type="application/ld+json"
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbJsonLd) }}
+        dangerouslySetInnerHTML={{ __html: toJsonLdString(breadcrumbJsonLd) }}
       />
       <div className="mx-auto max-w-[65ch]">
         <h1 className="font-display text-ink text-3xl md:text-4xl">{page.title}</h1>
