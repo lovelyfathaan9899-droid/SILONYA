@@ -35,7 +35,21 @@ const SECURITY_HEADERS = [
 
 const nextConfig: NextConfig = {
   reactStrictMode: true,
-  transpilePackages: ["@silonya/ui", "@silonya/utils", "@silonya/api", "@silonya/database"],
+  transpilePackages: [
+    "@silonya/ui",
+    "@silonya/utils",
+    "@silonya/api",
+    "@silonya/auth",
+    "@silonya/database",
+  ],
+  // Keeps the Prisma query engine as a real runtime require rather than a
+  // webpack-bundled module — without this, the native query-engine binary
+  // (a real .so/.dll.node file Prisma expects to find on disk) risks being
+  // pulled into a bundled chunk on serverless deploy targets, matching
+  // apps/admin's existing config (packages/auth's native argon2 binding
+  // uses a separate `eval("require")` escape hatch — see
+  // packages/auth/src/password.ts).
+  serverExternalPackages: ["@prisma/client"],
   images: {
     remotePatterns: [
       // Cloudinary — real product photography (TECH_STACK.md §2).
