@@ -11,8 +11,10 @@ export { getStripeClient } from "./lib/stripe";
 export { siteUrl } from "./lib/site-url";
 export { toOrderEmailData } from "./lib/order-email-mapper";
 export {
+  flagOrderDisputed,
   markOrderPaid,
   markOrderPaymentFailed,
+  releaseExpiredReservations,
   syncRefundFromWebhook,
 } from "./services/order-fulfillment";
 export {

@@ -1,4 +1,4 @@
-import { prisma } from "@silonya/database";
+import { prisma, type Prisma } from "@silonya/database";
 import { calculateDiscountAmount, type DiscountKind } from "@silonya/utils";
 import { TRPCError } from "@trpc/server";
 
@@ -171,4 +171,54 @@ export async function findAutomaticDiscount(
     }
   }
   return best;
+}
+
+/**
+ * Re-validates a discount's usage limits atomically, immediately before
+ * recording its redemption inside the checkout transaction. validateDiscountCode/
+ * findAutomaticDiscount above run on the bare `prisma` client, before the
+ * checkout transaction even opens (so the UI can reject a bad/exhausted code
+ * fast, without holding a lock) — that's a check-then-act race for a
+ * usage-limited code: two concurrent checkouts against the last remaining
+ * use can both pass the count check before either writes its
+ * DiscountRedemption row, over-redeeming the limit. `SELECT ... FOR UPDATE`
+ * locks the Discount row so a second concurrent checkout using the *same*
+ * code blocks here until the first commits/rolls back and then sees the
+ * up-to-date count — same reasoning as reserveInventory's conditional
+ * UPDATE, applied to a row lock since "usage count" is a derived COUNT(*),
+ * not a single column that a conditional UPDATE can guard directly.
+ */
+export async function assertDiscountStillRedeemable(
+  tx: Prisma.TransactionClient,
+  discountId: string,
+  userId?: string | null,
+): Promise<void> {
+  const rows = await tx.$queryRaw<
+    { usage_limit: number | null; per_user_limit: number | null }[]
+  >`SELECT usage_limit, per_user_limit FROM discounts WHERE id = ${discountId} FOR UPDATE`;
+  const discount = rows[0];
+  if (!discount) {
+    throw new TRPCError({
+      code: "CONFLICT",
+      message: "That discount code is no longer available.",
+    });
+  }
+  if (discount.usage_limit !== null) {
+    const count = await tx.discountRedemption.count({ where: { discountId } });
+    if (count >= discount.usage_limit) {
+      throw new TRPCError({
+        code: "CONFLICT",
+        message: "That discount code has just been fully redeemed.",
+      });
+    }
+  }
+  if (discount.per_user_limit !== null && userId) {
+    const count = await tx.discountRedemption.count({ where: { discountId, userId } });
+    if (count >= discount.per_user_limit) {
+      throw new TRPCError({
+        code: "CONFLICT",
+        message: "You've already used this discount code the maximum number of times.",
+      });
+    }
+  }
 }

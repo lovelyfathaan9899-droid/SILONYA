@@ -84,3 +84,55 @@ export async function createProductWithVariant(
 
   return { product, variant, warehouseId, inventory };
 }
+
+/** A minimal Order + one OrderItem referencing a given variant — for exercising order-lifecycle logic (e.g. releaseExpiredReservations) directly, without going through the full checkout.createIntent flow. */
+export async function createPendingOrder(overrides: {
+  variantId: string;
+  quantity?: number;
+  unitPrice?: number;
+  status?: "pending_payment" | "paid" | "cancelled" | "payment_failed";
+  createdAt?: Date;
+}) {
+  const suffix = crypto.randomUUID().slice(0, 8);
+  const address = await prisma.address.create({
+    data: {
+      line1: "1 Market St",
+      city: "San Francisco",
+      region: "CA",
+      postalCode: "94105",
+      countryCode: "US",
+    },
+  });
+
+  const quantity = overrides.quantity ?? 1;
+  const unitPrice = overrides.unitPrice ?? 5000;
+
+  const order = await prisma.order.create({
+    data: {
+      orderNumber: `SIL-TEST-${suffix}`,
+      guestEmail: `test-${suffix}@example.com`,
+      status: overrides.status ?? "pending_payment",
+      subtotal: unitPrice * quantity,
+      grandTotal: unitPrice * quantity,
+      shippingAddressId: address.id,
+      billingAddressId: address.id,
+      createdAt: overrides.createdAt ?? new Date(),
+      items: {
+        create: [
+          {
+            variantId: overrides.variantId,
+            productNameSnapshot: "Test Product",
+            variantLabelSnapshot: "",
+            skuSnapshot: "TEST-SKU",
+            unitPrice,
+            quantity,
+            lineTotal: unitPrice * quantity,
+          },
+        ],
+      },
+    },
+    include: { items: true },
+  });
+
+  return order;
+}

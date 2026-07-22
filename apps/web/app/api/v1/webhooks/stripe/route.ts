@@ -1,5 +1,6 @@
 import { signOrderAccessToken } from "@silonya/auth";
 import {
+  flagOrderDisputed,
   getStripeClient,
   markOrderPaid,
   markOrderPaymentFailed,
@@ -87,6 +88,16 @@ export async function POST(request: Request) {
       const latestRefund = charge.refunds?.data.at(-1);
       if (paymentIntentId && latestRefund) {
         await syncRefundFromWebhook(paymentIntentId, latestRefund.id, latestRefund.amount);
+      }
+      break;
+    }
+
+    case "charge.dispute.created": {
+      const dispute = event.data.object;
+      const paymentIntentId =
+        typeof dispute.payment_intent === "string" ? dispute.payment_intent : null;
+      if (paymentIntentId) {
+        await flagOrderDisputed(paymentIntentId, dispute.id, dispute.amount, dispute.reason);
       }
       break;
     }

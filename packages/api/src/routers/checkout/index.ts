@@ -17,6 +17,7 @@ import {
 } from "../../services/inventory";
 import { findRedeemableGiftCard } from "../gift-cards";
 import {
+  assertDiscountStillRedeemable,
   CURRENCY,
   findAutomaticDiscount,
   toAddressCreateInput,
@@ -241,6 +242,7 @@ export const checkoutRouter = router({
             });
 
             if (discount) {
+              await assertDiscountStillRedeemable(tx, discount.id, userId);
               await tx.discountRedemption.create({
                 data: { discountId: discount.id, orderId: createdOrder.id, userId },
               });
