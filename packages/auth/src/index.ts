@@ -16,6 +16,7 @@ export {
   revokeCustomerSession,
   revokeAllCustomerSessions,
   createAdminSession,
+  rotateAdminSession,
   revokeAdminSession,
   type IssuedTokens,
 } from "./session";

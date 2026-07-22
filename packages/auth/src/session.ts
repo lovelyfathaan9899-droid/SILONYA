@@ -106,6 +106,36 @@ export async function createAdminSession(
   return { accessToken, refreshToken: raw };
 }
 
+/** Mirrors rotateCustomerSession — see that function's doc comment for the rotation-scheme caveat, which applies identically here. */
+export async function rotateAdminSession(refreshTokenRaw: string): Promise<IssuedTokens | null> {
+  const hash = hashRefreshToken(refreshTokenRaw);
+  const session = await prisma.adminSession.findUnique({
+    where: { refreshTokenHash: hash },
+    include: { adminUser: { include: { role: true } } },
+  });
+  if (
+    !session ||
+    session.revokedAt ||
+    session.expiresAt < new Date() ||
+    session.adminUser.deactivatedAt
+  ) {
+    return null;
+  }
+  const { raw, hash: newHash } = generateRefreshToken();
+  await prisma.adminSession.update({
+    where: { id: session.id },
+    data: {
+      refreshTokenHash: newHash,
+      expiresAt: new Date(Date.now() + ADMIN_REFRESH_TOKEN_TTL_SECONDS * 1000),
+    },
+  });
+  const accessToken = await signAccessToken(
+    { sub: session.adminUserId, sid: session.id, role: session.adminUser.role.name },
+    ADMIN_ACCESS_TOKEN_TTL_SECONDS,
+  );
+  return { accessToken, refreshToken: raw };
+}
+
 export async function revokeAdminSession(sessionId: string): Promise<void> {
   await prisma.adminSession.update({
     where: { id: sessionId },

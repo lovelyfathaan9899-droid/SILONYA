@@ -1,11 +1,27 @@
-import { createAdminSession, revokeAdminSession, verifyPassword } from "@silonya/auth";
+import {
+  createAdminSession,
+  revokeAdminSession,
+  rotateAdminSession,
+  verifyPassword,
+} from "@silonya/auth";
 import { prisma } from "@silonya/database";
 import { TRPCError } from "@trpc/server";
 import { z } from "zod";
+import { checkRateLimit } from "../lib/rate-limit";
 import { adminProcedure, publicProcedure, router } from "../trpc";
 
 const FAILED_LOGIN_LOCKOUT_THRESHOLD = 5;
 const LOCKOUT_MINUTES = 15;
+// Per-account lockout (below) throttles repeated guesses against ONE admin
+// email; it does nothing against an attacker enumerating MANY different
+// admin emails, since each gets a fresh lockout counter. Admin accounts are
+// few and high-value, so a single shared bucket across all admin logins
+// (not per-email/IP — this app doesn't reliably expose a client IP to the
+// resolver, same reasoning as customer-auth.ts's login rate limit) is an
+// acceptable trade for that coverage: legitimate concurrent admin typos
+// are rare enough not to hit this in practice.
+const ADMIN_LOGIN_GLOBAL_LIMIT = 30;
+const ADMIN_LOGIN_GLOBAL_WINDOW_MS = 15 * 60 * 1000;
 
 /**
  * Admin credential login (AUTHENTICATION.md §3). TOTP-based 2FA enrollment
@@ -23,6 +39,18 @@ export const adminAuthRouter = router({
       }),
     )
     .mutation(async ({ input }) => {
+      const rateLimitResult = checkRateLimit(
+        "admin-login",
+        ADMIN_LOGIN_GLOBAL_LIMIT,
+        ADMIN_LOGIN_GLOBAL_WINDOW_MS,
+      );
+      if (!rateLimitResult.allowed) {
+        throw new TRPCError({
+          code: "TOO_MANY_REQUESTS",
+          message: "Too many login attempts. Please try again in a few minutes.",
+        });
+      }
+
       const genericError = new TRPCError({
         code: "UNAUTHORIZED",
         message: "Invalid email or password.",
@@ -97,4 +125,18 @@ export const adminAuthRouter = router({
     await revokeAdminSession(ctx.adminSession.sessionId);
     return { success: true };
   }),
+
+  /** Same "silent refresh before expiry" reasoning as customerAuth.refresh — see that procedure's doc comment. */
+  refresh: publicProcedure
+    .input(z.object({ refreshToken: z.string().min(1) }))
+    .mutation(async ({ input }) => {
+      const tokens = await rotateAdminSession(input.refreshToken);
+      if (!tokens) {
+        throw new TRPCError({
+          code: "UNAUTHORIZED",
+          message: "Session expired. Please sign in again.",
+        });
+      }
+      return { tokens };
+    }),
 });

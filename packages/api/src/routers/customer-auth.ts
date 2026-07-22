@@ -6,6 +6,7 @@ import {
   issueVerificationToken,
   revokeAllCustomerSessions,
   revokeCustomerSession,
+  rotateCustomerSession,
   verifyPassword,
 } from "@silonya/auth";
 import { prisma } from "@silonya/database";
@@ -197,6 +198,28 @@ export const customerAuthRouter = router({
     await revokeCustomerSession(ctx.customerSession.sessionId);
     return { success: true };
   }),
+
+  /**
+   * AUTHENTICATION.md §2.2 — "refresh happens transparently via a silent
+   * client-side refresh flow before expiry." `publicProcedure`, not
+   * `customerProcedure`: the whole point is issuing a new access token once
+   * the old one has already expired, so there's no valid access-token
+   * session to require here — the refresh token (presented explicitly,
+   * read from its httpOnly cookie by the caller, never by client JS) is
+   * the credential being checked instead.
+   */
+  refresh: publicProcedure
+    .input(z.object({ refreshToken: z.string().min(1) }))
+    .mutation(async ({ input }) => {
+      const tokens = await rotateCustomerSession(input.refreshToken);
+      if (!tokens) {
+        throw new TRPCError({
+          code: "UNAUTHORIZED",
+          message: "Session expired. Please sign in again.",
+        });
+      }
+      return { tokens };
+    }),
 
   changePassword: customerProcedure
     .input(z.object({ currentPassword: z.string().min(1), newPassword: passwordSchema }))

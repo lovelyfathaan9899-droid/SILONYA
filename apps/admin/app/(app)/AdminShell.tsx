@@ -18,6 +18,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import type { ReactNode } from "react";
 import { logoutAction } from "@/app/actions";
+import { SessionRefresher } from "@/components/SessionRefresher";
 
 const NAV_ITEMS = [
   { label: "Overview", href: "/", icon: LayoutGrid },
@@ -49,6 +50,7 @@ export function AdminShell({ children, adminEmail, adminRole }: AdminShellProps)
 
   return (
     <div className="flex min-h-screen">
+      <SessionRefresher />
       <aside className="border-mist flex w-60 shrink-0 flex-col border-r bg-white">
         <div className="border-mist border-b px-6 py-5">
           <span className="font-display text-ink text-lg tracking-widest">SILONYA</span>

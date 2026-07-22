@@ -14,6 +14,8 @@ Defines how identity, sessions, and access control work across the customer stor
 ---
 
 > **Implementation status (Phase 8+9):** email+password customer accounts (§2.1–2.4) are implemented — registration, login, logout, password reset/change, email verification, profile/address management, order history, and database-backed wishlist all exist (`packages/api/src/routers/customer-auth.ts`, `account/`). Google/Apple OAuth (§2.1, §2.5) remain unimplemented — they need real provider credentials (client id/secret) that don't exist in this environment, so `AuthIdentity`/`AuthProvider` are modeled in the schema but no OAuth callback route exists yet. Guest checkout stays fully first-class per principle 2: `checkout.createIntent` still accepts unauthenticated requests, and guest order access still uses the signed order-access token (`packages/auth/src/order-access-token.ts`) rather than a login session. On registration, any prior guest orders matching the new account's email are retroactively linked (`Order.userId` set) — see ORDER_MANAGEMENT.md §4.
+>
+> **Production-readiness audit finding:** for a while, §2.2's "refresh happens transparently via a silent client-side refresh flow" was purely aspirational — `rotateCustomerSession`/`rotateAdminSession` existed but nothing ever called them (no refresh endpoint, no client-side trigger), so every customer was force-logged-out roughly every 15 minutes of session age (60 for admins) regardless of activity, no matter how long their refresh token remained valid. Fixed: `customerAuth.refresh`/`adminAuth.refresh` tRPC procedures, `app/refresh-session-action.ts` (Server Action, both apps), and `components/SessionRefresher.tsx` (a client component mounted in each app's shell that calls the action on an interval — 10 min for customers, 45 min for admins — well inside each access-token TTL). §2.2's "a reused/stolen refresh token is detected and the session family is revoked" is still not true — rotation happens (confirmed working, including invalidating the previous token), but reuse of an already-rotated-past token just fails validation silently rather than revoking anything; `packages/auth/src/session.ts`'s own comment documents this as a deliberate, tracked tradeoff, not an oversight.
 
 ## 2. Customer Authentication
 
@@ -73,7 +75,9 @@ Stricter by default — admins hold access to customer PII, orders, and payment 
 - Session lifetime shorter than customer sessions (8 hours, re-authenticate daily).
 - Every admin login and every sensitive admin action (refund, role change, product deletion) is written to `AuditLogEntry` (§5).
 - Admin accounts are provisioned by an existing admin (no public admin registration endpoint exists).
-- Failed login lockout: 5 attempts → 15-minute lockout, alerting on repeated failures against the same account (possible credential-stuffing target).
+- Failed login lockout: 5 attempts → 15-minute lockout, alerting on repeated failures against the same account (possible credential-stuffing target). A global rate limit (30 attempts / 15 min across all admin logins, not just one account) additionally throttles an attacker enumerating many different admin emails, which per-account lockout alone doesn't catch (`packages/api/src/routers/admin-auth.ts`).
+
+> **Production-readiness audit finding — real gap, not yet closed:** mandatory TOTP 2FA is not implemented anywhere in the codebase. Every admin write procedure is currently reachable with password-only auth (rate-limited and lockout-protected, per above, but single-factor). Deliberately **not** built as part of this pass — proper 2FA needs product decisions this audit shouldn't make silently (enrollment UX, backup-code recovery flow, whether it's enforced retroactively for existing admins) and is sized as a real feature, not a bug fix. Treat as a pre-launch blocker requiring an explicit decision, not an oversight to quietly patch.
 
 ---
 

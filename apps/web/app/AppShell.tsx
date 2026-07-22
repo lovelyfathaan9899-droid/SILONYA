@@ -4,6 +4,7 @@ import { Footer, Header, ThemeProvider, Toaster } from "@silonya/ui";
 import Link from "next/link";
 import type { ReactNode } from "react";
 import { HeaderActions } from "@/components/HeaderActions";
+import { SessionRefresher } from "@/components/SessionRefresher";
 import { CustomerSessionProvider } from "@/lib/customer-session-client";
 import { footerColumns, footerLegalLinks, footerSocialLinks, primaryNav } from "@/lib/nav-data";
 
@@ -56,6 +57,7 @@ export function AppShell({
 
   return (
     <CustomerSessionProvider loggedIn={loggedIn}>
+      <SessionRefresher />
       <ThemeProvider>
         <Header logo={<Wordmark />} items={primaryNav} actions={<HeaderActions />} linkAs={Link} />
         <main className="flex-1">{children}</main>
