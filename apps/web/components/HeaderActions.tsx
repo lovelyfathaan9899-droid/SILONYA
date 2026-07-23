@@ -63,7 +63,12 @@ export function HeaderActions() {
 
   return (
     <>
-      <ThemeToggle />
+      {/* The 3-way theme switch doesn't fit alongside menu/logo/search/
+          account/bag on a phone-width header (found via mobile audit — it
+          alone was ~115px, pushing the actions cluster to 380px+ wide on a
+          375px viewport). Desktop-only here; MobileNav renders its own
+          copy inside the drawer so the feature isn't lost on mobile. */}
+      <ThemeToggle className="hidden lg:inline-flex" />
 
       <Link
         href={loggedIn ? "/account" : "/login"}

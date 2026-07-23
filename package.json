@@ -25,6 +25,7 @@
     "db:studio": "pnpm --filter @silonya/database studio"
   },
   "devDependencies": {
+    "@playwright/test": "^1.61.1",
     "@silonya/config": "workspace:*",
     "eslint": "^9.17.0",
     "husky": "^9.1.0",

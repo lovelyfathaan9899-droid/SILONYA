@@ -14,7 +14,14 @@ export const ToastViewport = forwardRef<
   <ToastPrimitive.Viewport
     ref={ref}
     className={cn(
-      "fixed bottom-0 right-0 z-[100] flex w-full max-w-sm flex-col gap-3 p-4 outline-none md:bottom-4 md:right-4",
+      // inset-x-0 (not right-0 + w-full) on mobile: pins both edges directly
+      // rather than computing width against the fixed-position containing
+      // block, which was landing 4px past the right edge on some viewports
+      // (found via a mobile audit — visually invisible until you measure,
+      // but a real horizontal-scroll trigger).
+      "fixed inset-x-0 bottom-0 z-[100] flex flex-col gap-3 px-4 pt-4 outline-none",
+      "pb-[max(1rem,env(safe-area-inset-bottom))]",
+      "md:inset-x-auto md:bottom-4 md:right-4 md:w-full md:max-w-sm md:pb-4",
       className,
     )}
     {...props}

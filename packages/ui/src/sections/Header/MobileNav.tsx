@@ -11,6 +11,7 @@ import {
   AccordionItem,
   AccordionTrigger,
 } from "../../primitives/Accordion";
+import { ThemeToggle } from "../../theme/ThemeToggle";
 import type { NavItem } from "./types";
 
 export interface MobileNavProps {
@@ -43,7 +44,7 @@ export function MobileNav({
           )}
         >
           <DialogPrimitive.Title className="sr-only">Menu</DialogPrimitive.Title>
-          <div className="border-mist flex h-16 items-center justify-end border-b px-4">
+          <div className="border-mist flex h-16 items-center justify-end border-b px-4 pt-[env(safe-area-inset-top)]">
             <DialogPrimitive.Close
               aria-label="Close menu"
               className={cn(
@@ -105,6 +106,13 @@ export function MobileNav({
               )}
             </Accordion>
           </nav>
+
+          {/* Theme switch lives here instead of the header row on mobile —
+              see apps/web/components/HeaderActions.tsx for why. */}
+          <div className="border-mist flex items-center justify-between border-t px-4 py-4 pb-[max(1rem,env(safe-area-inset-bottom))]">
+            <span className="text-stone font-sans text-xs uppercase tracking-wide">Theme</span>
+            <ThemeToggle />
+          </div>
         </DialogPrimitive.Content>
       </DialogPrimitive.Portal>
     </DialogPrimitive.Root>

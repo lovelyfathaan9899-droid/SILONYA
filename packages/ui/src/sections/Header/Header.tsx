@@ -32,6 +32,7 @@ export function Header({ logo, items, actions, linkAs = "a", className }: Header
     <header
       className={cn(
         "border-mist bg-bone/95 sticky top-0 z-30 border-b backdrop-blur-sm",
+        "pt-[env(safe-area-inset-top)]",
         className,
       )}
     >

@@ -158,7 +158,7 @@ export default async function HomePage() {
           <h2 className="font-display text-ink text-3xl md:text-4xl">New arrivals</h2>
           <Link
             href="/collections/new-arrivals"
-            className="text-ink font-sans text-sm underline underline-offset-4"
+            className="text-ink -my-2.5 inline-block py-2.5 font-sans text-sm underline underline-offset-4"
           >
             Shop all
           </Link>
@@ -173,7 +173,7 @@ export default async function HomePage() {
           <h2 className="font-display text-ink text-3xl md:text-4xl">Best sellers</h2>
           <Link
             href="/collections/best-sellers"
-            className="text-ink font-sans text-sm underline underline-offset-4"
+            className="text-ink -my-2.5 inline-block py-2.5 font-sans text-sm underline underline-offset-4"
           >
             Shop all
           </Link>

@@ -32,6 +32,10 @@ const defaultProjectFiles = [
   "scripts/*.mjs",
   "packages/*/scripts/*.mjs",
   "apps/*/scripts/*.mjs",
+  "playwright.config.ts",
+  "apps/*/playwright.config.ts",
+  "e2e/*.spec.ts",
+  "apps/*/e2e/*.spec.ts",
 ];
 
 export const baseConfig = tseslint.config(

@@ -20,7 +20,10 @@ export function LoginForm({ next }: { next?: string }) {
       <div className="flex flex-col gap-2">
         <div className="flex items-center justify-between">
           <Label htmlFor="password">Password</Label>
-          <Link href="/forgot-password" className="text-stone font-sans text-xs underline">
+          <Link
+            href="/forgot-password"
+            className="text-stone -my-2.5 inline-block py-2.5 font-sans text-xs underline"
+          >
             Forgot password?
           </Link>
         </div>
@@ -42,7 +45,7 @@ export function LoginForm({ next }: { next?: string }) {
       </Button>
       <p className="text-stone font-sans text-sm">
         New to SILONYA?{" "}
-        <Link href="/register" className="text-ink underline">
+        <Link href="/register" className="text-ink -my-2.5 inline-block py-2.5 underline">
           Create an account
         </Link>
       </p>

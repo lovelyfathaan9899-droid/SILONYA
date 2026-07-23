@@ -68,7 +68,10 @@ export function ProductCard({
       </div>
 
       <div className="flex flex-col gap-1">
-        <Link href={`/products/${slug}`} className="text-ink font-sans text-sm hover:underline">
+        <Link
+          href={`/products/${slug}`}
+          className="text-ink -my-1.5 inline-block py-1.5 font-sans text-sm hover:underline"
+        >
           {name}
         </Link>
         <PriceDisplay

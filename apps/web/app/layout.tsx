@@ -1,5 +1,5 @@
 import { ThemeScript } from "@silonya/ui";
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import type { ReactNode } from "react";
 import { AppShell } from "./AppShell";
 import { getCustomerContext } from "@/lib/customer-context";
@@ -26,6 +26,18 @@ export const metadata: Metadata = {
     title: SITE_NAME,
     description,
   },
+};
+
+// viewportFit: "cover" lets the page draw edge-to-edge under a notch/Dynamic
+// Island/home indicator instead of the browser's default letterboxing —
+// needed for the sticky header/full-bleed sections to actually reach the
+// screen edges. Fixed/sticky elements compensate with explicit
+// env(safe-area-inset-*) padding (Header, MobileNav, CartDrawer, Toast)
+// rather than relying on the browser to avoid those regions for us.
+export const viewport: Viewport = {
+  width: "device-width",
+  initialScale: 1,
+  viewportFit: "cover",
 };
 
 const organizationJsonLd = {

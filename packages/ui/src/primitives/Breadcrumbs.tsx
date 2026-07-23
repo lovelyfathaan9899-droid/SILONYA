@@ -32,7 +32,7 @@ export function Breadcrumbs({ items, className, linkAs: LinkComponent = "a" }: B
                 ) : (
                   <LinkComponent
                     href={item.href}
-                    className="hover:text-ink transition-colors duration-150"
+                    className="hover:text-ink -mx-1 -my-2.5 inline-block px-1 py-2.5 transition-colors duration-150"
                   >
                     {item.label}
                   </LinkComponent>

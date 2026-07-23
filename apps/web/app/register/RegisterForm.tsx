@@ -51,7 +51,7 @@ export function RegisterForm() {
       </Button>
       <p className="text-stone font-sans text-sm">
         Already have an account?{" "}
-        <Link href="/login" className="text-ink underline">
+        <Link href="/login" className="text-ink -my-2.5 inline-block py-2.5 underline">
           Sign in
         </Link>
       </p>

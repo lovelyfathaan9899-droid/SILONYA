@@ -180,7 +180,7 @@ export function ReviewsSection({ productId }: { productId: string }) {
         ) : null
       ) : (
         <p className="text-stone font-sans text-sm">
-          <Link href="/login" className="text-ink underline">
+          <Link href="/login" className="text-ink -my-2.5 inline-block py-2.5 underline">
             Sign in
           </Link>{" "}
           to write a review of a product you&apos;ve purchased.

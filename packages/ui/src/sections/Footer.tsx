@@ -102,7 +102,7 @@ export function Footer({
                   <li key={link.label}>
                     <LinkComponent
                       href={link.href}
-                      className="text-ink hover:text-accent font-sans text-sm transition-colors duration-150"
+                      className="text-ink hover:text-accent -mx-1 -my-2 inline-block px-1 py-2 font-sans text-sm transition-colors duration-150"
                     >
                       {link.label}
                     </LinkComponent>
@@ -124,7 +124,7 @@ export function Footer({
                 <li key={link.label}>
                   <LinkComponent
                     href={link.href}
-                    className="text-stone hover:text-ink font-sans text-xs transition-colors duration-150"
+                    className="text-stone hover:text-ink -mx-1 -my-2.5 inline-block px-1 py-2.5 font-sans text-xs transition-colors duration-150"
                   >
                     {link.label}
                   </LinkComponent>

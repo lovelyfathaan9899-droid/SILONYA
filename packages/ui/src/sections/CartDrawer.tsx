@@ -55,7 +55,7 @@ export function CartDrawer({
             "focus-visible:outline-none",
           )}
         >
-          <div className="border-mist flex h-16 items-center justify-between border-b px-4">
+          <div className="border-mist flex h-16 items-center justify-between border-b px-4 pt-[env(safe-area-inset-top)]">
             <DialogPrimitive.Title className="font-display text-ink text-lg">
               Bag
             </DialogPrimitive.Title>
@@ -149,7 +149,7 @@ export function CartDrawer({
           </div>
 
           {lines.length > 0 ? (
-            <div className="border-mist border-t px-4 py-6">
+            <div className="border-mist border-t px-4 py-6 pb-[max(1.5rem,env(safe-area-inset-bottom))]">
               <div className="text-ink mb-4 flex items-center justify-between font-sans text-sm">
                 <span>Subtotal</span>
                 <PriceDisplay price={subtotal} currency={currency} />

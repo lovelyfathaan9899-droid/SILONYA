@@ -151,7 +151,12 @@ export function ProductPurchasePanel({
 
   return (
     <div className="flex flex-col gap-6">
-      <div className="flex items-start justify-between gap-4">
+      {/* Stacks below sm — title + wishlist/compare actions competing for
+          one row overflowed the viewport on narrow phones once the product
+          name was long enough (found via a mobile audit; neither side can
+          shrink further without becoming illegible or losing a touch
+          target). */}
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
         <div>
           <h1 className="font-display text-ink text-3xl md:text-4xl">{name}</h1>
           <PriceDisplay
