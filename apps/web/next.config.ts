@@ -1,3 +1,4 @@
+import path from "node:path";
 import type { NextConfig } from "next";
 
 // Redirects (SEO_ARCHITECTURE.md §6, the Redirect table) are added when
@@ -45,11 +46,32 @@ const nextConfig: NextConfig = {
   // Keeps the Prisma query engine as a real runtime require rather than a
   // webpack-bundled module — without this, the native query-engine binary
   // (a real .so/.dll.node file Prisma expects to find on disk) risks being
-  // pulled into a bundled chunk on serverless deploy targets, matching
-  // apps/admin's existing config (packages/auth's native argon2 binding
-  // uses a separate `eval("require")` escape hatch — see
-  // packages/auth/src/password.ts).
+  // pulled into a bundled chunk on serverless deploy targets. @node-rs/argon2
+  // needs the same protection but reaches it via an `eval("require")`
+  // escape hatch instead (packages/auth/src/password.ts) — its actual
+  // native binary lives in a platform-specific optional-dependency
+  // sub-package name (@node-rs/argon2-linux-x64-gnu) that
+  // serverExternalPackages can't be told about generically.
   serverExternalPackages: ["@prisma/client"],
+  // Monorepo root is two levels up from this app; without this, Next's
+  // output file-tracer sometimes fails to walk out to sibling workspace
+  // packages (packages/database, node_modules) when resolving pnpm's
+  // symlinked node_modules, which is how both the Prisma query engine and
+  // @node-rs/argon2's native binary went missing from the deployed Vercel
+  // function despite building fine (https://pris.ly/d/engine-not-found-nextjs).
+  outputFileTracingRoot: path.join(__dirname, "../.."),
+  // Explicit belt-and-suspenders inclusion of both native binaries — their
+  // load paths are computed at runtime (Prisma) or hidden from static
+  // analysis via eval (argon2), which the tracer can miss even with the
+  // root fix above. Vercel's Lambda runtime is glibc/x64 Linux, hence
+  // -linux-x64-gnu specifically (see pnpm-lock.yaml for the full platform
+  // matrix if this ever needs to support a different runtime).
+  outputFileTracingIncludes: {
+    "/**": [
+      "../../packages/database/generated/client/**/*",
+      "../../node_modules/.pnpm/@node-rs+argon2-linux-x64-gnu@*/**/*",
+    ],
+  },
   images: {
     remotePatterns: [
       // Cloudinary — real product photography (TECH_STACK.md §2).

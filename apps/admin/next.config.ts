@@ -1,3 +1,4 @@
+import path from "node:path";
 import type { NextConfig } from "next";
 
 // SECURITY_ARCHITECTURE.md §3.3 — same script-src caveat as apps/web/next.config.ts
@@ -37,9 +38,18 @@ const nextConfig: NextConfig = {
     "@silonya/database",
   ],
   // Keeps the Prisma query engine as a real runtime require rather than a
-  // webpack-bundled module (packages/auth's native argon2 binding uses a
-  // separate `eval("require")` escape hatch — see packages/auth/src/password.ts).
+  // webpack-bundled module — see apps/web/next.config.ts for the full
+  // rationale (same monorepo, same failure mode; @node-rs/argon2's native
+  // binary is handled via packages/auth/src/password.ts's eval("require")
+  // escape hatch plus the outputFileTracingIncludes entry below).
   serverExternalPackages: ["@prisma/client"],
+  outputFileTracingRoot: path.join(__dirname, "../.."),
+  outputFileTracingIncludes: {
+    "/**": [
+      "../../packages/database/generated/client/**/*",
+      "../../node_modules/.pnpm/@node-rs+argon2-linux-x64-gnu@*/**/*",
+    ],
+  },
   headers() {
     return Promise.resolve([{ source: "/:path*", headers: SECURITY_HEADERS }]);
   },
