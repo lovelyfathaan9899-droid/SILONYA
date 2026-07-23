@@ -47,7 +47,8 @@ const nextConfig: NextConfig = {
   outputFileTracingIncludes: {
     "/**": [
       "../../packages/database/generated/client/**/*",
-      "../../node_modules/.pnpm/@node-rs+argon2-linux-x64-gnu@*/**/*",
+      "./node_modules/@node-rs/argon2/**/*",
+      "./node_modules/@node-rs/argon2-linux-x64-gnu/**/*",
     ],
   },
   headers() {

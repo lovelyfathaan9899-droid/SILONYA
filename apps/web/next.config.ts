@@ -48,28 +48,32 @@ const nextConfig: NextConfig = {
   // (a real .so/.dll.node file Prisma expects to find on disk) risks being
   // pulled into a bundled chunk on serverless deploy targets. @node-rs/argon2
   // needs the same protection but reaches it via an `eval("require")`
-  // escape hatch instead (packages/auth/src/password.ts) — its actual
-  // native binary lives in a platform-specific optional-dependency
-  // sub-package name (@node-rs/argon2-linux-x64-gnu) that
-  // serverExternalPackages can't be told about generically.
+  // escape hatch instead (packages/auth/src/password.ts).
   serverExternalPackages: ["@prisma/client"],
   // Monorepo root is two levels up from this app; without this, Next's
   // output file-tracer sometimes fails to walk out to sibling workspace
-  // packages (packages/database, node_modules) when resolving pnpm's
-  // symlinked node_modules, which is how both the Prisma query engine and
-  // @node-rs/argon2's native binary went missing from the deployed Vercel
-  // function despite building fine (https://pris.ly/d/engine-not-found-nextjs).
+  // packages (packages/database) when resolving pnpm's symlinked
+  // node_modules, which is one reason the Prisma query engine went missing
+  // from the deployed Vercel function despite building fine
+  // (https://pris.ly/d/engine-not-found-nextjs).
   outputFileTracingRoot: path.join(__dirname, "../.."),
-  // Explicit belt-and-suspenders inclusion of both native binaries — their
-  // load paths are computed at runtime (Prisma) or hidden from static
-  // analysis via eval (argon2), which the tracer can miss even with the
-  // root fix above. Vercel's Lambda runtime is glibc/x64 Linux, hence
-  // -linux-x64-gnu specifically (see pnpm-lock.yaml for the full platform
-  // matrix if this ever needs to support a different runtime).
+  // Explicit belt-and-suspenders inclusion of both native binaries:
+  //  - Prisma's engine load path is computed at runtime, not a static
+  //    require string, so even correct tracing can miss it.
+  //  - @node-rs/argon2 is only a transitive dependency of packages/auth,
+  //    not a direct dependency of this app — under this repo's strict pnpm
+  //    (shamefully-hoist=false), that means it has NO resolvable
+  //    node_modules/@node-rs/argon2 symlink at this app's own level at all,
+  //    so require("@node-rs/argon2") could never succeed here regardless
+  //    of tracing. It's declared as a direct dependency in package.json
+  //    specifically to create that symlink; this include just makes sure
+  //    the tracer (which can't see the require, hidden behind eval) still
+  //    copies it into the deployed bundle.
   outputFileTracingIncludes: {
     "/**": [
       "../../packages/database/generated/client/**/*",
-      "../../node_modules/.pnpm/@node-rs+argon2-linux-x64-gnu@*/**/*",
+      "./node_modules/@node-rs/argon2/**/*",
+      "./node_modules/@node-rs/argon2-linux-x64-gnu/**/*",
     ],
   },
   images: {

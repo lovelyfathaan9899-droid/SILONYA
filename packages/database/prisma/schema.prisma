@@ -7,6 +7,14 @@ generator client {
   provider        = "prisma-client-js"
   output          = "../generated/client"
   previewFeatures = ["postgresqlExtensions"]
+  // "native" alone isn't reliable on Vercel: the build container's own
+  // reported platform can differ from the actual Lambda runtime's, so
+  // "native" generates whatever engine the *build* machine happens to be,
+  // not necessarily what the deployed function needs — a well-documented
+  // Prisma+Vercel gap (https://pris.ly/d/engine-not-found-nextjs).
+  // rhel-openssl-3.0.x is what Vercel's Node.js Lambda runtime actually
+  // needs; keeping "native" too so local dev (Windows/macOS) still works.
+  binaryTargets   = ["native", "rhel-openssl-3.0.x"]
 }
 
 datasource db {
