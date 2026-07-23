@@ -4,7 +4,15 @@ import { SITE_URL } from "@/lib/site-config";
 import { featuredCollectionSlugs } from "@/lib/homepage-content";
 import { categorySlugs } from "@/lib/taxonomy";
 
-export const revalidate = 3600;
+// Live-catalog data (see doc comment below) means this must never be
+// pre-rendered at build time: `next build`'s static export runs page bodies
+// against whatever database the build environment can reach, and a build
+// container losing that connection (unreachable DB, unset env vars, a cold
+// Neon endpoint) fails the *entire deployment*, not just this route. Forcing
+// this route to be request-time-only (like every other DB-backed route in
+// this app, which are already Dynamic) makes the sitemap fail independently,
+// at request time, instead of taking down the whole build.
+export const dynamic = "force-dynamic";
 
 async function getAllProductSlugs(): Promise<string[]> {
   const caller = createServerCaller();
