@@ -52,26 +52,26 @@ const nextConfig: NextConfig = {
   // output file-tracer can fail to walk out to sibling workspace packages
   // when resolving pnpm's symlinked node_modules.
   outputFileTracingRoot: path.join(__dirname, "../.."),
-  // @prisma/client and @node-rs/argon2 are both only *transitive*
-  // dependencies (of packages/database and packages/auth respectively),
-  // never direct dependencies of this app — under this repo's strict pnpm
-  // (shamefully-hoist=false), that means neither has a resolvable
-  // node_modules/<pkg> symlink at this app's own level at all, so a
-  // runtime require() could never succeed here regardless of tracing
-  // config, since Node's module resolution walks up from the *requiring
-  // file's* eventual location in the deployed bundle, not from wherever
-  // the workspace package that originally imported it happens to live.
-  // Both are declared as direct dependencies in package.json specifically
-  // to create real, resolvable symlinks; these includes make sure the
-  // tracer actually copies their real contents (including native
-  // binaries) into the deployed bundle at those same resolvable paths —
-  // belt-and-suspenders for Prisma (whose engine binary load path is
-  // computed at runtime, not a static require string) and load-bearing
-  // for argon2 (whose require is hidden from static analysis entirely by
-  // an `eval("require")` escape hatch — packages/auth/src/password.ts).
+  // @node-rs/argon2 is only a *transitive* dependency of packages/auth,
+  // never a direct dependency of this app — under this repo's strict pnpm
+  // (shamefully-hoist=false), that means it has no resolvable
+  // node_modules/@node-rs/argon2 symlink at this app's own level at all,
+  // so require("@node-rs/argon2") could never succeed here regardless of
+  // tracing config. It's declared as a direct dependency in package.json
+  // specifically to create a real symlink; this include makes sure the
+  // tracer (which can't see the require at all — it's hidden from static
+  // analysis by an `eval("require")` escape hatch,
+  // packages/auth/src/password.ts) still copies it into the deployed
+  // bundle. @prisma/client needs no entry here: once
+  // serverExternalPackages actually applies to it (see above), Next's own
+  // automatic tracing already finds and includes everything it needs,
+  // including the query engine binary — a manual include for the entire
+  // package was tried and reverted, since it force-bundled every unused
+  // database-engine WASM variant (MySQL, SQLite, SQL Server, CockroachDB)
+  // into every single route's function and blew well past Vercel's
+  // function size limit.
   outputFileTracingIncludes: {
     "/**": [
-      "./node_modules/@prisma/client/**/*",
       "./node_modules/@node-rs/argon2/**/*",
       "./node_modules/@node-rs/argon2-linux-x64-gnu/**/*",
     ],

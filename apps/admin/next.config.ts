@@ -46,7 +46,6 @@ const nextConfig: NextConfig = {
   outputFileTracingRoot: path.join(__dirname, "../.."),
   outputFileTracingIncludes: {
     "/**": [
-      "./node_modules/@prisma/client/**/*",
       "./node_modules/@node-rs/argon2/**/*",
       "./node_modules/@node-rs/argon2-linux-x64-gnu/**/*",
     ],
