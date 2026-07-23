@@ -1,5 +1,5 @@
 import { hash } from "@node-rs/argon2";
-import type { PrismaClient } from "../generated/client/index.js";
+import type { PrismaClient } from "@prisma/client";
 
 /**
  * Sample customer-facing data (Phase 8+9 — CUSTOMER ACCOUNT SYSTEM /

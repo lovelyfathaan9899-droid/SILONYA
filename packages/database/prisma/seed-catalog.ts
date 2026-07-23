@@ -1,4 +1,4 @@
-import type { PrismaClient } from "../generated/client/index.js";
+import type { PrismaClient } from "@prisma/client";
 
 /**
  * Realistic-but-fake catalog (TESTING_STRATEGY.md §10) so the storefront

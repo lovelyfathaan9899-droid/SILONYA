@@ -1,5 +1,5 @@
 import { hash } from "@node-rs/argon2";
-import { PrismaClient } from "../generated/client/index.js";
+import { PrismaClient } from "@prisma/client";
 import { seedAccounts } from "./seed-accounts";
 import { seedCatalog } from "./seed-catalog";
 import { seedCms } from "./seed-cms";

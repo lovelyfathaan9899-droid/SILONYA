@@ -1,4 +1,4 @@
-import type { PrismaClient } from "../generated/client/index.js";
+import type { PrismaClient } from "@prisma/client";
 
 /** Test discount codes (Phase 6 — "basic coupon support") so checkout has something real to exercise locally. */
 const DISCOUNTS = [

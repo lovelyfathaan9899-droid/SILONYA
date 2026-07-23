@@ -46,32 +46,32 @@ const nextConfig: NextConfig = {
   // Keeps the Prisma query engine as a real runtime require rather than a
   // webpack-bundled module — without this, the native query-engine binary
   // (a real .so/.dll.node file Prisma expects to find on disk) risks being
-  // pulled into a bundled chunk on serverless deploy targets. @node-rs/argon2
-  // needs the same protection but reaches it via an `eval("require")`
-  // escape hatch instead (packages/auth/src/password.ts).
+  // pulled into a bundled chunk on serverless deploy targets.
   serverExternalPackages: ["@prisma/client"],
   // Monorepo root is two levels up from this app; without this, Next's
-  // output file-tracer sometimes fails to walk out to sibling workspace
-  // packages (packages/database) when resolving pnpm's symlinked
-  // node_modules, which is one reason the Prisma query engine went missing
-  // from the deployed Vercel function despite building fine
-  // (https://pris.ly/d/engine-not-found-nextjs).
+  // output file-tracer can fail to walk out to sibling workspace packages
+  // when resolving pnpm's symlinked node_modules.
   outputFileTracingRoot: path.join(__dirname, "../.."),
-  // Explicit belt-and-suspenders inclusion of both native binaries:
-  //  - Prisma's engine load path is computed at runtime, not a static
-  //    require string, so even correct tracing can miss it.
-  //  - @node-rs/argon2 is only a transitive dependency of packages/auth,
-  //    not a direct dependency of this app — under this repo's strict pnpm
-  //    (shamefully-hoist=false), that means it has NO resolvable
-  //    node_modules/@node-rs/argon2 symlink at this app's own level at all,
-  //    so require("@node-rs/argon2") could never succeed here regardless
-  //    of tracing. It's declared as a direct dependency in package.json
-  //    specifically to create that symlink; this include just makes sure
-  //    the tracer (which can't see the require, hidden behind eval) still
-  //    copies it into the deployed bundle.
+  // @prisma/client and @node-rs/argon2 are both only *transitive*
+  // dependencies (of packages/database and packages/auth respectively),
+  // never direct dependencies of this app — under this repo's strict pnpm
+  // (shamefully-hoist=false), that means neither has a resolvable
+  // node_modules/<pkg> symlink at this app's own level at all, so a
+  // runtime require() could never succeed here regardless of tracing
+  // config, since Node's module resolution walks up from the *requiring
+  // file's* eventual location in the deployed bundle, not from wherever
+  // the workspace package that originally imported it happens to live.
+  // Both are declared as direct dependencies in package.json specifically
+  // to create real, resolvable symlinks; these includes make sure the
+  // tracer actually copies their real contents (including native
+  // binaries) into the deployed bundle at those same resolvable paths —
+  // belt-and-suspenders for Prisma (whose engine binary load path is
+  // computed at runtime, not a static require string) and load-bearing
+  // for argon2 (whose require is hidden from static analysis entirely by
+  // an `eval("require")` escape hatch — packages/auth/src/password.ts).
   outputFileTracingIncludes: {
     "/**": [
-      "../../packages/database/generated/client/**/*",
+      "./node_modules/@prisma/client/**/*",
       "./node_modules/@node-rs/argon2/**/*",
       "./node_modules/@node-rs/argon2-linux-x64-gnu/**/*",
     ],

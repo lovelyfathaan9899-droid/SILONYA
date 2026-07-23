@@ -1,4 +1,4 @@
-import { PrismaClient } from "../generated/client/index.js";
+import { PrismaClient } from "@prisma/client";
 
 // Standard Next.js/serverless singleton pattern — prevents exhausting the
 // Postgres connection pool from hot-reload-created PrismaClient instances
@@ -14,4 +14,4 @@ if (process.env.NODE_ENV !== "production") {
   globalForPrisma.prisma = prisma;
 }
 
-export * from "../generated/client/index.js";
+export * from "@prisma/client";

@@ -1,4 +1,4 @@
-import type { PrismaClient } from "../generated/client/index.js";
+import type { PrismaClient } from "@prisma/client";
 
 /**
  * Sample CMS content (Phase 10 — SEARCH, CMS & ANALYTICS) so the homepage's

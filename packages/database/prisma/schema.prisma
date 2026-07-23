@@ -5,15 +5,29 @@
 
 generator client {
   provider        = "prisma-client-js"
-  output          = "../generated/client"
   previewFeatures = ["postgresqlExtensions"]
-  // "native" alone isn't reliable on Vercel: the build container's own
-  // reported platform can differ from the actual Lambda runtime's, so
+  // No custom `output` — deliberately generates into its default
+  // node_modules-resolved location (@prisma/client). A custom output path
+  // (this used to be "../generated/client") breaks Next.js's
+  // `serverExternalPackages` on Vercel: that config only externalizes
+  // imports whose *resolved file path* contains "node_modules/<pkg>/" (see
+  // next's build/webpack-config.js — it's a literal substring regex on the
+  // resolved path), so a generated client living outside node_modules can
+  // never match it regardless of what name is listed. Without a working
+  // external, `@silonya/database` (a transpilePackages entry) gets its
+  // Prisma client bundled directly into the app's webpack chunks, which
+  // breaks the query engine's own relative-to-itself binary lookup at
+  // runtime — the actual cause of a real "Query Engine for runtime
+  // rhel-openssl-3.0.x" production outage, empirically confirmed via
+  // Vercel deploy logs, not a guess.
+  //
+  // "native" alone isn't reliable on Vercel either: the build container's
+  // own reported platform can differ from the actual Lambda runtime's, so
   // "native" generates whatever engine the *build* machine happens to be,
-  // not necessarily what the deployed function needs — a well-documented
-  // Prisma+Vercel gap (https://pris.ly/d/engine-not-found-nextjs).
-  // rhel-openssl-3.0.x is what Vercel's Node.js Lambda runtime actually
-  // needs; keeping "native" too so local dev (Windows/macOS) still works.
+  // not necessarily what the deployed function needs
+  // (https://pris.ly/d/engine-not-found-nextjs). rhel-openssl-3.0.x is
+  // what Vercel's Node.js Lambda runtime actually needs; keeping "native"
+  // too so local dev (Windows/macOS) still works.
   binaryTargets   = ["native", "rhel-openssl-3.0.x"]
 }
 
