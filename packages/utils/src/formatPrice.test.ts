@@ -2,24 +2,24 @@ import { describe, expect, it } from "vitest";
 import { formatPriceForDisplay, parsePriceToMinorUnits } from "./formatPrice";
 
 describe("formatPriceForDisplay", () => {
-  it("formats whole-dollar minor units", () => {
-    expect(formatPriceForDisplay(42000)).toBe("$420.00");
+  it("formats whole-rupee minor units", () => {
+    expect(formatPriceForDisplay(42000)).toBe("PKR 420");
   });
 
   it("formats zero", () => {
-    expect(formatPriceForDisplay(0)).toBe("$0.00");
+    expect(formatPriceForDisplay(0)).toBe("PKR 0");
   });
 
-  it("formats sub-dollar minor units", () => {
-    expect(formatPriceForDisplay(5)).toBe("$0.05");
+  it("formats sub-rupee minor units (PKR has no minor display unit, rounds to whole rupees)", () => {
+    expect(formatPriceForDisplay(5)).toBe("PKR 0");
   });
 
-  it("formats a non-USD currency", () => {
+  it("formats a non-PKR currency", () => {
     expect(formatPriceForDisplay(10000, "EUR")).toBe("€100.00");
   });
 
   it("formats negative minor units (refund/adjustment display)", () => {
-    expect(formatPriceForDisplay(-500)).toBe("-$5.00");
+    expect(formatPriceForDisplay(-500)).toBe("-PKR 5");
   });
 });
 

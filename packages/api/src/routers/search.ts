@@ -85,7 +85,7 @@ async function searchViaMeilisearch(input: z.infer<typeof searchInput>) {
     slug: hit.slug,
     name: hit.name,
     price: hit.price,
-    currency: "USD",
+    currency: "PKR",
     image: hit.imageUrl ? { url: hit.imageUrl, altText: hit.name } : null,
     available: hit.available,
     compareAtPrice: null,

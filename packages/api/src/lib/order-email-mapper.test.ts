@@ -5,7 +5,7 @@ function baseOrder(overrides: Partial<Parameters<typeof toOrderEmailData>[0]> = 
   return {
     orderNumber: "SIL-483920",
     guestEmail: "shopper@example.com",
-    currency: "USD",
+    currency: "PKR",
     subtotal: 42000,
     shippingTotal: 1000,
     taxTotal: 3360,
@@ -20,12 +20,12 @@ function baseOrder(overrides: Partial<Parameters<typeof toOrderEmailData>[0]> = 
       },
     ],
     shippingAddress: {
-      line1: "1 Market St",
+      line1: "House 12, Street 4, F-8/3",
       line2: null,
-      city: "San Francisco",
-      region: "CA",
-      postalCode: "94105",
-      countryCode: "US",
+      city: "Islamabad",
+      region: "Islamabad Capital Territory",
+      postalCode: "44000",
+      countryCode: "PK",
     },
     ...overrides,
   };
@@ -47,7 +47,7 @@ describe("toOrderEmailData", () => {
     expect(result).toEqual({
       orderNumber: "SIL-483920",
       guestEmail: "shopper@example.com",
-      currency: "USD",
+      currency: "PKR",
       subtotal: 42000,
       shippingTotal: 1000,
       taxTotal: 3360,
@@ -62,12 +62,12 @@ describe("toOrderEmailData", () => {
         },
       ],
       shippingAddress: {
-        line1: "1 Market St",
+        line1: "House 12, Street 4, F-8/3",
         line2: null,
-        city: "San Francisco",
-        region: "CA",
-        postalCode: "94105",
-        countryCode: "US",
+        city: "Islamabad",
+        region: "Islamabad Capital Territory",
+        postalCode: "44000",
+        countryCode: "PK",
       },
       orderTrackingUrl: "https://silonya.com/order/confirmation?token=abc",
     });

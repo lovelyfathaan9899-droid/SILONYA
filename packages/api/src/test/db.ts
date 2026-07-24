@@ -58,7 +58,7 @@ export async function createProductWithVariant(
       name: overrides.name ?? "Test Product",
       status: "active",
       basePrice: overrides.basePrice ?? 5000,
-      currency: "USD",
+      currency: "PKR",
       publishedAt: new Date(),
     },
   });

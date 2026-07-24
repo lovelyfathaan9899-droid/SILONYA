@@ -1,5 +1,5 @@
 import { Badge, PriceDisplay } from "@silonya/ui";
-import { formatPriceForDisplay } from "@silonya/utils";
+import { formatDateInKarachi, formatPriceForDisplay } from "@silonya/utils";
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { getCustomerContext } from "@/lib/customer-context";
@@ -73,8 +73,11 @@ export default async function AccountOrderDetailPage({ params }: PageProps) {
             <ul className="flex flex-col gap-2">
               {order.statusEvents.map((event) => (
                 <li key={event.id} className="text-stone font-sans text-sm">
-                  {new Date(event.createdAt).toLocaleString()} —{" "}
-                  {STATUS_LABEL[event.status] ?? event.status}
+                  {formatDateInKarachi(new Date(event.createdAt), {
+                    dateStyle: "medium",
+                    timeStyle: "short",
+                  })}{" "}
+                  — {STATUS_LABEL[event.status] ?? event.status}
                 </li>
               ))}
             </ul>

@@ -8,13 +8,20 @@ import type { PrismaClient } from "@prisma/client";
  * photography (DESIGN_SYSTEM.md §2.4 governs the *real* imagery standard,
  * which this intentionally does not attempt to satisfy).
  *
- * Category tree (PRODUCT_SYSTEM.md §5 — "Hierarchical tree"): four
+ * Category tree (PRODUCT_SYSTEM.md §5 — "Hierarchical tree"): five
  * top-level departments, each with several leaf subcategories. Every
  * product is assigned to exactly one leaf category (never the bare
  * department), matching "category assignment is treated as effectively
  * single-select" in that doc. Leaf slugs are department-prefixed
  * (`women-dresses`, not `dresses`) so no two leaves can ever collide, even
  * though today only "Shoes" (Women/Men) actually would.
+ *
+ * Perfume's leaves are segmented by gender (Women's/Men's/Unisex Perfume)
+ * rather than by product type — the same segmentation a dedicated "Gender"
+ * facet would otherwise provide, modeled as taxonomy instead of a new facet
+ * dimension so browsing/filtering/PDP all work exactly like every other
+ * department (Volume/Concentration are ProductOptions on the variant, same
+ * mechanism as Size/Color).
  */
 
 interface SeedVariant {
@@ -41,6 +48,7 @@ const DEPARTMENTS = [
   { name: "Women", slug: "women" },
   { name: "Men", slug: "men" },
   { name: "Kids", slug: "kids" },
+  { name: "Perfume", slug: "perfume" },
   { name: "Accessories", slug: "accessories" },
 ] as const;
 
@@ -58,6 +66,9 @@ const SUBCATEGORIES: { name: string; slug: string; departmentSlug: string }[] = 
   { name: "Baby", slug: "kids-baby", departmentSlug: "kids" },
   { name: "Boys", slug: "kids-boys", departmentSlug: "kids" },
   { name: "Girls", slug: "kids-girls", departmentSlug: "kids" },
+  { name: "Women's Perfume", slug: "perfume-women", departmentSlug: "perfume" },
+  { name: "Men's Perfume", slug: "perfume-men", departmentSlug: "perfume" },
+  { name: "Unisex Perfume", slug: "perfume-unisex", departmentSlug: "perfume" },
   { name: "Bags", slug: "accessories-bags", departmentSlug: "accessories" },
   { name: "Wallets", slug: "accessories-wallets", departmentSlug: "accessories" },
   { name: "Belts", slug: "accessories-belts", departmentSlug: "accessories" },
@@ -79,6 +90,7 @@ const COLLECTIONS = [
     slug: "the-essentials",
     description: "Considered basics, done properly.",
   },
+  { name: "Sale", slug: "sale", description: "Reduced prices, while stocks last." },
 ];
 
 const SIZE_OPTION = { name: "Size", values: ["XS", "S", "M", "L", "XL"] };

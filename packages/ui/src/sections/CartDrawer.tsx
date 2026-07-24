@@ -30,8 +30,8 @@ export interface CartDrawerProps {
 }
 
 /**
- * Bag contents only — no checkout button wired to anything yet
- * (checkout/payments are explicitly out of scope for this phase). Fully
+ * Compact bag preview — subtotal only, with a link through to the full
+ * /cart page for the itemized shipping/discount/total breakdown. Fully
  * controlled (no store import), per PROJECT_RULES.md §1 — apps/web wires
  * this to its Zustand cart store.
  */
@@ -42,7 +42,7 @@ export function CartDrawer({
   onQuantityChange,
   onRemove,
 }: CartDrawerProps) {
-  const currency = lines[0]?.currency ?? "USD";
+  const currency = lines[0]?.currency ?? "PKR";
   const subtotal = lines.reduce((sum, line) => sum + line.unitPrice * line.quantity, 0);
 
   return (
@@ -154,9 +154,7 @@ export function CartDrawer({
                 <span>Subtotal</span>
                 <PriceDisplay price={subtotal} currency={currency} />
               </div>
-              <p className="text-stone mb-4 font-sans text-xs">
-                Shipping and taxes calculated at checkout.
-              </p>
+              <p className="text-stone mb-4 font-sans text-xs">Shipping calculated at checkout.</p>
               <div className="flex flex-col gap-2">
                 <Button asChild className="w-full">
                   <Link

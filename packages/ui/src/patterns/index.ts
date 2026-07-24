@@ -7,3 +7,4 @@ export { SizeSelector, type SizeSelectorProps, type SizeOption } from "./SizeSel
 export { ColorSelector, type ColorSelectorProps, type ColorOption } from "./ColorSelector";
 export { WishlistButton, type WishlistButtonProps } from "./WishlistButton";
 export { ProductCard, type ProductCardProps } from "./ProductCard";
+export { Wordmark, type WordmarkProps } from "./Wordmark";

@@ -48,6 +48,15 @@ export const departments: Department[] = [
     ],
   },
   {
+    name: "Perfume",
+    slug: "perfume",
+    subcategories: [
+      { name: "Women's Perfume", slug: "perfume-women" },
+      { name: "Men's Perfume", slug: "perfume-men" },
+      { name: "Unisex Perfume", slug: "perfume-unisex" },
+    ],
+  },
+  {
     name: "Accessories",
     slug: "accessories",
     subcategories: [

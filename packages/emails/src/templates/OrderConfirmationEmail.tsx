@@ -84,7 +84,7 @@ export function OrderConfirmationEmail({ order }: { order: OrderEmailData }) {
               </>
             ) : null}
             {order.shippingAddress.city}, {order.shippingAddress.region ?? ""}{" "}
-            {order.shippingAddress.postalCode}
+            {order.shippingAddress.postalCode ?? ""}
             <br />
             {order.shippingAddress.countryCode}
           </Text>

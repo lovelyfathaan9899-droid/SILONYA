@@ -22,7 +22,7 @@ export interface OrderEmailData {
     line2: string | null;
     city: string;
     region: string | null;
-    postalCode: string;
+    postalCode: string | null;
     countryCode: string;
   };
   orderTrackingUrl: string;

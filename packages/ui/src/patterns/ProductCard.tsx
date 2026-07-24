@@ -29,7 +29,7 @@ export function ProductCard({
   name,
   price,
   compareAtPrice,
-  currency = "USD",
+  currency = "PKR",
   image,
   available = true,
   isWishlisted = false,

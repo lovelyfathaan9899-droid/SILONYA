@@ -102,6 +102,7 @@ export { ColorSelector, type ColorSelectorProps, type ColorOption } from "./patt
 export { WishlistButton, type WishlistButtonProps } from "./patterns";
 export { ProductCard, type ProductCardProps } from "./patterns";
 export { ProductGallery, type ProductGalleryProps } from "./patterns/ProductGallery";
+export { Wordmark, type WordmarkProps } from "./patterns/Wordmark";
 
 // Sections
 export {

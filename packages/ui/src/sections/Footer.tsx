@@ -1,13 +1,10 @@
 "use client";
 
 import type { LucideIcon } from "lucide-react";
-import { type ElementType, type ReactNode, type SubmitEventHandler, useState } from "react";
+import type { ElementType, ReactNode } from "react";
 import { Icon } from "../icons/Icon";
 import { Container } from "../layout/Container";
 import { cn } from "../lib/cn";
-import { Button } from "../primitives/Button";
-import { Input } from "../primitives/Input";
-import { Label } from "../primitives/Label";
 
 export interface FooterLinkColumn {
   heading: string;
@@ -25,8 +22,6 @@ export interface FooterProps {
   columns: FooterLinkColumn[];
   socialLinks?: FooterSocialLink[];
   legalLinks?: { label: string; href: string }[];
-  /** Newsletter form is presentational only — wire the real subscription endpoint in a later phase (this is visual-foundation scope). Defaults to a no-op. */
-  onNewsletterSubmit?: (email: string) => void;
   copyrightHolder?: string;
   linkAs?: ElementType;
   className?: string;
@@ -42,51 +37,15 @@ export function Footer({
   columns,
   socialLinks,
   legalLinks,
-  onNewsletterSubmit,
   copyrightHolder = "SILONYA",
   linkAs: LinkComponent = "a",
   className,
 }: FooterProps) {
-  const [email, setEmail] = useState("");
-  const [submitted, setSubmitted] = useState(false);
-
-  const handleSubmit: SubmitEventHandler<HTMLFormElement> = (event) => {
-    event.preventDefault();
-    if (!email) return;
-    onNewsletterSubmit?.(email);
-    setSubmitted(true);
-    setEmail("");
-  };
-
   return (
     <footer className={cn("border-mist bg-bone border-t", className)}>
       <Container>
         <div className="grid grid-cols-4 gap-8 py-12 md:py-16 lg:grid-cols-12">
-          <div className="col-span-4 flex flex-col gap-4 lg:col-span-4">
-            {logo}
-            <form onSubmit={handleSubmit} className="flex max-w-sm flex-col gap-2">
-              <Label htmlFor="footer-newsletter-email">Sign up for updates</Label>
-              <div className="flex gap-2">
-                <Input
-                  id="footer-newsletter-email"
-                  type="email"
-                  placeholder="Email address"
-                  value={email}
-                  onChange={(event) => {
-                    setEmail(event.target.value);
-                    setSubmitted(false);
-                  }}
-                  required
-                />
-                <Button type="submit" variant="secondary">
-                  Subscribe
-                </Button>
-              </div>
-              <p aria-live="polite" className="text-stone min-h-[1.25rem] font-sans text-xs">
-                {submitted ? "Thank you — you're on the list." : ""}
-              </p>
-            </form>
-          </div>
+          <div className="col-span-4 flex flex-col gap-4 lg:col-span-4">{logo}</div>
 
           {columns.map((column) => (
             <nav

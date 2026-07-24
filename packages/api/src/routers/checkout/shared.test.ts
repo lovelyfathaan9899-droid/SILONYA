@@ -62,26 +62,36 @@ describe("variantLabel", () => {
 describe("toAddressCreateInput", () => {
   it("maps omitted optional fields to null", () => {
     const result = toAddressCreateInput({
+      fullName: "Jane Doe",
       line1: "1 Market St",
       city: "San Francisco",
       postalCode: "94105",
       countryCode: "US",
+      phone: "+15555550100",
     });
     expect(result).toEqual({
+      fullName: "Jane Doe",
       line1: "1 Market St",
       line2: null,
       city: "San Francisco",
       region: null,
       postalCode: "94105",
       countryCode: "US",
-      phone: null,
+      phone: "+15555550100",
       userId: null,
     });
   });
 
   it("attaches userId for a logged-in customer's address", () => {
     const result = toAddressCreateInput(
-      { line1: "1 Market St", city: "SF", postalCode: "94105", countryCode: "US" },
+      {
+        fullName: "Jane Doe",
+        line1: "1 Market St",
+        city: "SF",
+        postalCode: "94105",
+        countryCode: "US",
+        phone: "+15555550100",
+      },
       "user-1",
     );
     expect(result.userId).toBe("user-1");

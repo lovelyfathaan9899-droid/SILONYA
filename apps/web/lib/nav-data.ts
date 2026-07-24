@@ -13,45 +13,50 @@ const featuredCollectionLinks = [
   { label: "The Essentials", href: "/collections/the-essentials" },
 ];
 
-export const primaryNav: NavItem[] = departments.map((department) => ({
-  label: department.name,
-  columns: [
-    {
-      heading: "Shop",
-      links: [
-        { label: `All ${department.name}`, href: `/categories/${department.slug}` },
-        ...department.subcategories.map((sub) => ({
-          label: sub.name,
-          href: `/categories/${sub.slug}`,
-        })),
-      ],
-    },
-    { heading: "Featured", links: featuredCollectionLinks },
-  ],
-}));
+// Sale/New Arrivals are plain links (no mega-menu) to the same curated
+// collections the "Featured" panel above already points at — kept in sync
+// by construction rather than duplicated as separate hrefs.
+export const primaryNav: NavItem[] = [
+  ...departments.map((department) => ({
+    label: department.name,
+    columns: [
+      {
+        heading: "Shop",
+        links: [
+          { label: `All ${department.name}`, href: `/categories/${department.slug}` },
+          ...department.subcategories.map((sub) => ({
+            label: sub.name,
+            href: `/categories/${sub.slug}`,
+          })),
+        ],
+      },
+      { heading: "Featured", links: featuredCollectionLinks },
+    ],
+  })),
+  { label: "Sale", href: "/collections/sale" },
+  { label: "New Arrivals", href: "/collections/new-arrivals" },
+];
 
 export const footerColumns: FooterLinkColumn[] = [
   {
-    heading: "Help",
+    heading: "Company",
     links: [
-      { label: "Shipping & Returns", href: "#" },
-      { label: "Size Guide", href: "#" },
-      { label: "Contact", href: "#" },
+      { label: "About", href: "/pages/about" },
+      { label: "Contact", href: "/pages/contact" },
     ],
   },
   {
-    heading: "About",
+    heading: "Policies",
     links: [
-      { label: "Our Story", href: "#" },
-      { label: "Sustainability", href: "#" },
-      { label: "Careers", href: "#" },
+      { label: "Shipping Policy", href: "/pages/shipping-policy" },
+      { label: "Return Policy", href: "/pages/return-policy" },
     ],
   },
 ];
 
 export const footerLegalLinks = [
-  { label: "Privacy Policy", href: "#" },
-  { label: "Terms of Service", href: "#" },
+  { label: "Privacy Policy", href: "/pages/privacy-policy" },
+  { label: "Terms of Service", href: "/pages/terms-of-service" },
 ];
 
 // Lucide's brand icons (Instagram/Twitter/Facebook) are deprecated

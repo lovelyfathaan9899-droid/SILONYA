@@ -12,7 +12,7 @@ export interface PriceDisplayProps {
 export function PriceDisplay({
   price,
   compareAtPrice,
-  currency = "USD",
+  currency = "PKR",
   className,
 }: PriceDisplayProps) {
   const onSale = typeof compareAtPrice === "number" && compareAtPrice > price;

@@ -18,17 +18,17 @@ export const hero = {
 export const editorial = {
   image: {
     url: "https://placehold.co/1200x1500/e7e4de/111111.png?text=SILONYA+Journal",
-    altText: "Behind the making of a SILONYA wool coat",
+    altText: "SILONYA editorial photograph",
   },
-  eyebrow: "The Journal",
+  eyebrow: "The Edit",
   heading: "Considered, not trend-driven",
-  body: "Every SILONYA piece starts with the cloth. We work with a small group of mills across Italy and Japan, choosing fabrications for how they'll wear in — not just how they photograph on day one.",
-  ctaLabel: "Read our story",
+  body: "Every SILONYA piece is chosen for how it wears in over time — quality cloth and quiet construction, not just how it photographs on day one.",
+  ctaLabel: "Shop the Essentials",
   ctaHref: "/collections/the-essentials",
 };
 
 export const promo = {
-  message: "Complimentary shipping on orders over $200.",
+  message: "Free standard delivery on orders over PKR 5,000.",
 };
 
 export const featuredCollectionSlugs = ["new-arrivals", "best-sellers", "the-essentials"] as const;

@@ -5,21 +5,40 @@ export function generateOrderNumber(): string {
 }
 
 /**
- * "Basic" shipping/tax calculation (Phase 6 scope) — a flat rate and a
- * single-country flat tax rate, computed server-side and never trusted from
- * the client. PAYMENT_ARCHITECTURE.md §6 specifies Stripe Tax as the
- * long-term mechanism; that requires origin-address/tax-registration setup
- * in the Stripe dashboard that isn't in place yet, so this stands in until
- * then — swap the implementation behind these two functions, not their call
- * sites, when Stripe Tax is configured.
+ * "Basic" shipping/tax calculation (Phase 6 scope), computed server-side and
+ * never trusted from the client. PAYMENT_ARCHITECTURE.md §6 specifies
+ * Stripe Tax as the long-term tax mechanism; that requires origin-address/
+ * tax-registration setup in the Stripe dashboard that isn't in place yet.
+ * Pakistan launch has no configured tax rate at all (no entries below) —
+ * calculateTax always returns 0 today, kept only so a future market's rate
+ * (or Stripe Tax itself) slots in behind the same call sites without
+ * another schema/checkout-flow change.
+ *
+ * Shipping is two flat-rate tiers rather than one — CHECKOUT_ARCHITECTURE
+ * (Pakistan launch): Standard is free above a threshold, Express is a paid
+ * speed upgrade regardless of order size (matching how courier-based
+ * Pakistani ecommerce shipping is typically sold, unlike a single
+ * threshold-based rate).
  */
-const FLAT_SHIPPING_MINOR_UNITS = 1000; // $10.00
-const FREE_SHIPPING_THRESHOLD_MINOR_UNITS = 20000; // $200.00
-const FLAT_TAX_RATE_BY_COUNTRY: Record<string, number> = { US: 0.08 };
+export type ShippingMethod = "standard" | "express";
 
-export function calculateShipping(subtotal: number, freeShippingOverride: boolean): number {
+const SHIPPING_RATES_MINOR_UNITS: Record<ShippingMethod, number> = {
+  standard: 25000, // PKR 250
+  express: 50000, // PKR 500
+};
+const FREE_STANDARD_SHIPPING_THRESHOLD_MINOR_UNITS = 500000; // PKR 5,000
+const FLAT_TAX_RATE_BY_COUNTRY: Record<string, number> = {};
+
+export function calculateShipping(
+  subtotal: number,
+  method: ShippingMethod,
+  freeShippingOverride: boolean,
+): number {
   if (freeShippingOverride) return 0;
-  return subtotal >= FREE_SHIPPING_THRESHOLD_MINOR_UNITS ? 0 : FLAT_SHIPPING_MINOR_UNITS;
+  if (method === "standard" && subtotal >= FREE_STANDARD_SHIPPING_THRESHOLD_MINOR_UNITS) {
+    return 0;
+  }
+  return SHIPPING_RATES_MINOR_UNITS[method];
 }
 
 export function calculateTax(taxableAmount: number, countryCode: string): number {

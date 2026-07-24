@@ -1,7 +1,7 @@
 "use client";
 
 import { Button, EmptyState, Icon, Input, PriceDisplay, Section, toast } from "@silonya/ui";
-import { formatPriceForDisplay } from "@silonya/utils";
+import { calculateShipping, formatPriceForDisplay } from "@silonya/utils";
 import { Minus, Plus, X } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
@@ -36,8 +36,14 @@ export default function CartPage() {
   const [discountError, setDiscountError] = useState<string | null>(null);
   const [checkingDiscount, setCheckingDiscount] = useState(false);
 
-  const currency = lines[0]?.currency ?? "USD";
+  const currency = lines[0]?.currency ?? "PKR";
   const subtotal = lines.reduce((sum, line) => sum + line.unitPrice * line.quantity, 0);
+  const estimatedShipping = calculateShipping(
+    subtotal,
+    "standard",
+    discountPreview?.freeShipping ?? false,
+  );
+  const estimatedTotal = Math.max(0, subtotal + estimatedShipping - (discountPreview?.amount ?? 0));
 
   async function applyDiscount() {
     const code = codeInput.trim();
@@ -161,13 +167,27 @@ export default function CartPage() {
               <span>Subtotal</span>
               <PriceDisplay price={subtotal} currency={currency} />
             </div>
+            <div className="text-ink flex items-center justify-between font-sans text-sm">
+              <span>Estimated shipping</span>
+              <span>
+                {estimatedShipping === 0
+                  ? "Free"
+                  : formatPriceForDisplay(estimatedShipping, currency)}
+              </span>
+            </div>
             {discountPreview ? (
               <div className="text-ink flex items-center justify-between font-sans text-sm">
                 <span>Discount ({discountCode})</span>
                 <span>-{formatPriceForDisplay(discountPreview.amount, currency)}</span>
               </div>
             ) : null}
-            <p className="text-stone font-sans text-xs">Shipping and tax calculated at checkout.</p>
+            <div className="border-mist text-ink flex items-center justify-between border-t pt-3 font-sans text-base font-medium">
+              <span>Estimated total</span>
+              <PriceDisplay price={estimatedTotal} currency={currency} />
+            </div>
+            <p className="text-stone font-sans text-xs">
+              Final total, delivery method, and payment are confirmed at checkout.
+            </p>
             <Button asChild size="lg" className="mt-2 w-full">
               <Link href="/checkout">Checkout</Link>
             </Button>

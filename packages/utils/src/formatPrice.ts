@@ -5,11 +5,15 @@
  * string should ever be parsed from or formatted to.
  */
 
-export function formatPriceForDisplay(minorUnits: number, currency = "USD"): string {
-  return new Intl.NumberFormat("en-US", {
+export function formatPriceForDisplay(minorUnits: number, currency = "PKR"): string {
+  const formatted = new Intl.NumberFormat("en-US", {
     style: "currency",
     currency,
   }).format(minorUnits / 100);
+  // Intl inserts a non-breaking space (U+00A0) between some currency codes
+  // and the amount (e.g. "PKR 420") — normalized to a regular space so the
+  // string is predictable to grep, snapshot, and copy-paste.
+  return formatted.replace(/\u00A0/g, " ");
 }
 
 /**

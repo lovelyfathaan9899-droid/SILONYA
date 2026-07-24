@@ -15,7 +15,7 @@ const TONE_CLASSES: Record<NonNullable<PromoBannerProps["tone"]>, string> = {
   accent: "bg-accent text-white",
 };
 
-/** The slim announcement strip variant (e.g. "Free shipping over $200") — see EditorialSection for a larger promotional block with imagery. */
+/** The slim announcement strip variant (e.g. "Free shipping over PKR 5,000") — see EditorialSection for a larger promotional block with imagery. */
 export function PromoBanner({
   message,
   ctaLabel,

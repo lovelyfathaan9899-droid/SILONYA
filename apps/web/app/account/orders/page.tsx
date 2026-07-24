@@ -1,5 +1,5 @@
 import { Badge, EmptyState } from "@silonya/ui";
-import { formatPriceForDisplay } from "@silonya/utils";
+import { formatDateInKarachi, formatPriceForDisplay } from "@silonya/utils";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { getCustomerContext } from "@/lib/customer-context";
@@ -31,7 +31,7 @@ export default async function OrdersPage() {
               <div>
                 <p className="text-ink font-sans text-sm font-medium">{order.orderNumber}</p>
                 <p className="text-stone font-sans text-xs">
-                  {new Date(order.createdAt).toLocaleDateString()} · {order.itemCount} item
+                  {formatDateInKarachi(new Date(order.createdAt))} · {order.itemCount} item
                   {order.itemCount === 1 ? "" : "s"}
                 </p>
               </div>

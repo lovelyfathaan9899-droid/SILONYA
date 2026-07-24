@@ -1,6 +1,6 @@
 "use client";
 
-import { Button, Icon, MobileDrawer } from "@silonya/ui";
+import { Button, Icon, MobileDrawer, Wordmark } from "@silonya/ui";
 import {
   BarChart3,
   FileDown,
@@ -119,8 +119,8 @@ export function AdminShell({ children, adminEmail, adminRole }: AdminShellProps)
         >
           <Icon icon={Menu} size={22} />
         </button>
-        <span className="font-display text-ink text-lg tracking-widest">
-          SILONYA{" "}
+        <span className="flex items-center gap-2">
+          <Wordmark className="text-lg" />
           <span className="text-stone font-sans text-xs uppercase tracking-wide">Admin</span>
         </span>
         <span className="w-11" aria-hidden="true" />
@@ -144,8 +144,8 @@ export function AdminShell({ children, adminEmail, adminRole }: AdminShellProps)
       </MobileDrawer>
 
       <aside className="border-mist hidden bg-white lg:flex lg:w-60 lg:shrink-0 lg:flex-col lg:border-r">
-        <div className="border-mist border-b px-6 py-5">
-          <span className="font-display text-ink text-lg tracking-widest">SILONYA</span>
+        <div className="border-mist flex items-center border-b px-6 py-5">
+          <Wordmark className="text-lg" />
           <span className="text-stone ml-2 font-sans text-xs uppercase tracking-wide">Admin</span>
         </div>
         <NavList pathname={pathname} />

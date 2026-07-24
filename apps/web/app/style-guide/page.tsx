@@ -189,7 +189,7 @@ export default function StyleGuidePage() {
                 <CardDescription>A considered layer for the transitional season.</CardDescription>
               </CardHeader>
               <CardContent>
-                <p className="text-ink font-sans text-sm">$420.00</p>
+                <p className="text-ink font-sans text-sm">PKR 42,000</p>
               </CardContent>
               <CardFooter>
                 <Button size="sm">View</Button>

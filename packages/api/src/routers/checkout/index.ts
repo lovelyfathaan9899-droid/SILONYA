@@ -6,15 +6,10 @@ import { TRPCError } from "@trpc/server";
 import { z } from "zod";
 import { getDefaultWarehouseId } from "../admin-catalog/shared";
 import { publicProcedure, router } from "../../trpc";
-import { getStripeClient } from "../../lib/stripe";
 import { checkRateLimit } from "../../lib/rate-limit";
 import { siteUrl } from "../../lib/site-url";
 import { toOrderEmailData } from "../../lib/order-email-mapper";
-import {
-  finalizeReservation,
-  releaseReservation,
-  reserveInventory,
-} from "../../services/inventory";
+import { finalizeReservation, reserveInventory } from "../../services/inventory";
 import { findRedeemableGiftCard } from "../gift-cards";
 import {
   assertDiscountStillRedeemable,
@@ -26,27 +21,30 @@ import {
 } from "./shared";
 
 const addressInput = z.object({
+  fullName: z.string().trim().min(1),
   line1: z.string().trim().min(1),
   line2: z.string().trim().optional(),
   city: z.string().trim().min(1),
   region: z.string().trim().optional(),
-  postalCode: z.string().trim().min(1),
+  postalCode: z.string().trim().optional(),
   countryCode: z.string().trim().length(2),
-  phone: z.string().trim().optional(),
+  phone: z.string().trim().min(1),
 });
 
 const MAX_RETRY_ON_ORDER_NUMBER_COLLISION = 3;
 
 export const checkoutRouter = router({
   /**
-   * ORDER_MANAGEMENT.md §3 — the entire checkout-to-payment-intent flow in
+   * ORDER_MANAGEMENT.md §3 — the entire checkout-to-confirmed-order flow in
    * one procedure: re-validate cart against live data, reserve inventory,
-   * create the Order (pending_payment), then create a Stripe Checkout
-   * Session and return its hosted URL. The DB transaction and the Stripe
-   * call are deliberately sequential, not nested — Stripe is a network
-   * call and can't participate in a Postgres transaction; if it fails
-   * after the DB commit, the reservation is released and the order
-   * cancelled explicitly (see catch block below) rather than left stuck.
+   * create the Order, finalize it immediately. Pakistan launch supports
+   * Cash on Delivery only (PAYMENT_ARCHITECTURE.md) — "online" is rejected
+   * up front, before any reservation/DB write, so a real payment-gateway
+   * branch (Stripe Checkout Session creation, previously here) has nowhere
+   * live to run; it's removed rather than left as dead code reachable by
+   * nothing, and comes back the day `paymentMethod: "online"` is actually
+   * allowed through (the Stripe client/webhook/refund infrastructure
+   * elsewhere in the codebase is untouched).
    */
   createIntent: publicProcedure
     .input(
@@ -61,9 +59,19 @@ export const checkoutRouter = router({
         billingAddress: addressInput.optional(),
         discountCode: z.string().trim().min(1).optional(),
         giftCardCode: z.string().trim().min(1).optional(),
+        paymentMethod: z.enum(["cod", "online"]),
+        shippingMethod: z.enum(["standard", "express"]),
+        customerNote: z.string().trim().max(500).optional(),
       }),
     )
     .mutation(async ({ ctx, input }) => {
+      if (input.paymentMethod === "online") {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: "Online payment isn't available yet — please select Cash on Delivery.",
+        });
+      }
+
       // SECURITY_ARCHITECTURE.md §3.5 — abuse protection on checkout
       // (card-testing/carding, per the threat model in that doc).
       const rateLimitResult = checkRateLimit(
@@ -121,7 +129,11 @@ export const checkoutRouter = router({
         ? await validateDiscountCode(input.discountCode, subtotal, userId)
         : await findAutomaticDiscount(subtotal, userId);
 
-      const shippingTotal = calculateShipping(subtotal, discount?.freeShipping ?? false);
+      const shippingTotal = calculateShipping(
+        subtotal,
+        input.shippingMethod,
+        discount?.freeShipping ?? false,
+      );
       const taxableAmount = subtotal - (discount?.amount ?? 0);
       const taxTotal = calculateTax(taxableAmount, input.shippingAddress.countryCode);
       const totalBeforeGiftCard = Math.max(
@@ -205,12 +217,28 @@ export const checkoutRouter = router({
               },
             });
 
+            // No async payment step to wait for (COD is the only reachable
+            // method — see the top-of-procedure rejection of "online"), so
+            // the order is created directly in its settled state rather
+            // than passing through pending_payment at all. "paid" only when
+            // discount/gift card cover the whole order (nothing left to
+            // collect on delivery); otherwise "processing" — confirmed and
+            // being prepared, cash due on delivery.
+            const initialStatus = grandTotal === 0 ? "paid" : "processing";
+
             const createdOrder = await tx.order.create({
               data: {
                 orderNumber: generateOrderNumber(),
                 userId,
                 guestEmail: input.guestEmail,
-                status: "pending_payment",
+                status: initialStatus,
+                // Always set, regardless of status — the order is genuinely
+                // placed now in both cases (paid outright, or processing
+                // with cash due on delivery). admin-analytics.ts and
+                // services/reports.ts filter on `placedAt >= X`; leaving
+                // this null for "processing" would silently exclude every
+                // COD order (now the only order type) from all reporting.
+                placedAt: new Date(),
                 subtotal,
                 shippingTotal,
                 taxTotal,
@@ -218,6 +246,9 @@ export const checkoutRouter = router({
                 giftCardTotal: giftCardApplied,
                 grandTotal,
                 currency: CURRENCY,
+                paymentMethod: "cod",
+                shippingMethod: input.shippingMethod,
+                customerNote: input.customerNote ?? null,
                 shippingAddressId: shippingAddress.id,
                 billingAddressId: billingAddress.id,
                 discountId: discount?.id ?? null,
@@ -269,25 +300,23 @@ export const checkoutRouter = router({
               });
             }
 
-            // Fully covered by discount/gift card — nothing left to charge,
-            // so there's no Stripe PaymentIntent to wait on. Finalize the
-            // reservation and mark the order paid inline, mirroring what the
-            // webhook does for a paid Stripe order (services/order-fulfillment.ts).
-            if (grandTotal === 0) {
-              await finalizeReservation(tx, createdOrder.items, warehouseId);
-              await tx.order.update({
-                where: { id: createdOrder.id },
-                data: { status: "paid", placedAt: new Date() },
-              });
-              await tx.orderStatusEvent.create({
-                data: {
-                  orderId: createdOrder.id,
-                  status: "paid",
-                  triggeredBy: "system",
-                  note: "Fully covered by discount/gift card — no payment required.",
-                },
-              });
-            }
+            // No async payment step to wait for — the reservation converts
+            // to a real, finalized deduction immediately (COD collects cash
+            // on delivery, not here; the goods are still committed to this
+            // order right now, same as a webhook-confirmed Stripe payment
+            // would finalize them in services/order-fulfillment.ts).
+            await finalizeReservation(tx, createdOrder.items, warehouseId);
+            await tx.orderStatusEvent.create({
+              data: {
+                orderId: createdOrder.id,
+                status: initialStatus,
+                triggeredBy: "system",
+                note:
+                  initialStatus === "paid"
+                    ? "Fully covered by discount/gift card — no payment required."
+                    : "Cash on Delivery — order confirmed, payment due on delivery.",
+              },
+            });
 
             return createdOrder;
           },
@@ -301,119 +330,20 @@ export const checkoutRouter = router({
       });
       const confirmationUrl = `${siteUrl()}/order/confirmation?token=${accessToken}`;
 
-      // Fully covered by discount/gift card — no Stripe session to create;
-      // the order was already marked paid inside the transaction above.
-      if (grandTotal === 0) {
-        const orderWithDetails = await prisma.order.findUniqueOrThrow({
-          where: { id: order.id },
-          include: { items: true, shippingAddress: true, billingAddress: true },
-        });
-        const emailData = toOrderEmailData(orderWithDetails, confirmationUrl);
-        if (emailData) {
-          await sendOrderConfirmationEmail(emailData).catch((err: unknown) => {
-            console.error("[checkout] failed to send order confirmation email:", err);
-          });
-        }
-        return { checkoutUrl: confirmationUrl, orderId: order.id };
-      }
-
-      try {
-        const stripe = getStripeClient();
-
-        const totalReduction = (discount?.amount ?? 0) + giftCardApplied;
-        let discounts: { coupon: string }[] | undefined;
-        if (totalReduction > 0) {
-          const couponName =
-            discount && giftCardApplied > 0
-              ? "Discount & gift card"
-              : giftCardApplied > 0
-                ? "Gift card"
-                : (input.discountCode ?? "Discount");
-          const coupon = await stripe.coupons.create(
-            {
-              amount_off: totalReduction,
-              currency: CURRENCY.toLowerCase(),
-              duration: "once",
-              name: couponName,
-            },
-            { idempotencyKey: `coupon_${order.id}` },
-          );
-          discounts = [{ coupon: coupon.id }];
-        }
-
-        const session = await stripe.checkout.sessions.create(
-          {
-            mode: "payment",
-            customer_email: input.guestEmail,
-            ...(discounts ? { discounts } : {}),
-            line_items: [
-              ...order.items.map((item) => ({
-                price_data: {
-                  currency: CURRENCY.toLowerCase(),
-                  product_data: {
-                    name: item.variantLabelSnapshot
-                      ? `${item.productNameSnapshot} (${item.variantLabelSnapshot})`
-                      : item.productNameSnapshot,
-                  },
-                  unit_amount: item.unitPrice,
-                },
-                quantity: item.quantity,
-              })),
-              ...(shippingTotal > 0
-                ? [
-                    {
-                      price_data: {
-                        currency: CURRENCY.toLowerCase(),
-                        product_data: { name: "Shipping" },
-                        unit_amount: shippingTotal,
-                      },
-                      quantity: 1,
-                    },
-                  ]
-                : []),
-              ...(taxTotal > 0
-                ? [
-                    {
-                      price_data: {
-                        currency: CURRENCY.toLowerCase(),
-                        product_data: { name: "Tax" },
-                        unit_amount: taxTotal,
-                      },
-                      quantity: 1,
-                    },
-                  ]
-                : []),
-            ],
-            success_url: confirmationUrl,
-            cancel_url: `${siteUrl()}/checkout?cancelled=1`,
-            metadata: { orderId: order.id },
-            payment_intent_data: { metadata: { orderId: order.id } },
-          },
-          { idempotencyKey: order.id },
-        );
-
-        await prisma.payment.create({
-          data: {
-            orderId: order.id,
-            stripePaymentIntentId:
-              typeof session.payment_intent === "string"
-                ? session.payment_intent
-                : (session.payment_intent?.id ?? session.id),
-            status: "requires_action",
-            amount: grandTotal,
-            currency: CURRENCY,
-          },
-        });
-
-        return { checkoutUrl: session.url ?? `${siteUrl()}/checkout`, orderId: order.id };
-      } catch (err) {
-        await releaseOrderReservation(order.id, warehouseId);
-        if (err instanceof TRPCError) throw err;
-        throw new TRPCError({
-          code: "INTERNAL_SERVER_ERROR",
-          message: "Unable to start payment. Please try again.",
+      // Order is already fully settled (paid or processing-with-COD-due)
+      // from the transaction above — no payment gateway round-trip to wait
+      // on, so the customer goes straight to the confirmation page.
+      const orderWithDetails = await prisma.order.findUniqueOrThrow({
+        where: { id: order.id },
+        include: { items: true, shippingAddress: true, billingAddress: true },
+      });
+      const emailData = toOrderEmailData(orderWithDetails, confirmationUrl);
+      if (emailData) {
+        await sendOrderConfirmationEmail(emailData).catch((err: unknown) => {
+          console.error("[checkout] failed to send order confirmation email:", err);
         });
       }
+      return { checkoutUrl: confirmationUrl, orderId: order.id };
     }),
 
   /** Live cart-page preview — same rules as createIntent, no side effects. */
@@ -482,22 +412,6 @@ async function getOrderForGuest(orderId: string, email: string) {
     throw new TRPCError({ code: "NOT_FOUND", message: "Order not found." });
   }
   return order;
-}
-
-async function releaseOrderReservation(orderId: string, warehouseId: string): Promise<void> {
-  await prisma.$transaction(async (tx) => {
-    const items = await tx.orderItem.findMany({ where: { orderId } });
-    await releaseReservation(tx, items, warehouseId);
-    await tx.order.update({ where: { id: orderId }, data: { status: "cancelled" } });
-    await tx.orderStatusEvent.create({
-      data: {
-        orderId,
-        status: "cancelled",
-        triggeredBy: "system",
-        note: "Stripe Checkout Session creation failed; reservation released.",
-      },
-    });
-  });
 }
 
 function isUniqueOrderNumberConflict(err: unknown): boolean {

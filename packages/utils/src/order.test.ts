@@ -22,37 +22,33 @@ describe("generateOrderNumber", () => {
 });
 
 describe("calculateShipping", () => {
-  it("charges the flat rate below the free-shipping threshold", () => {
-    expect(calculateShipping(19999, false)).toBe(1000);
+  it("charges the standard flat rate below the free-shipping threshold", () => {
+    expect(calculateShipping(499999, "standard", false)).toBe(25000);
   });
 
-  it("is free at exactly the threshold", () => {
-    expect(calculateShipping(20000, false)).toBe(0);
+  it("is free (standard) at exactly the threshold", () => {
+    expect(calculateShipping(500000, "standard", false)).toBe(0);
   });
 
-  it("is free above the threshold", () => {
-    expect(calculateShipping(50000, false)).toBe(0);
+  it("is free (standard) above the threshold", () => {
+    expect(calculateShipping(900000, "standard", false)).toBe(0);
   });
 
-  it("is free when overridden regardless of subtotal", () => {
-    expect(calculateShipping(0, true)).toBe(0);
+  it("express is a flat rate regardless of subtotal, never free by threshold", () => {
+    expect(calculateShipping(0, "express", false)).toBe(50000);
+    expect(calculateShipping(900000, "express", false)).toBe(50000);
+  });
+
+  it("is free when overridden regardless of subtotal or method", () => {
+    expect(calculateShipping(0, "standard", true)).toBe(0);
+    expect(calculateShipping(0, "express", true)).toBe(0);
   });
 });
 
 describe("calculateTax", () => {
-  it("applies the flat US rate", () => {
-    expect(calculateTax(10000, "US")).toBe(800);
-  });
-
-  it("is case-insensitive on country code", () => {
-    expect(calculateTax(10000, "us")).toBe(800);
-  });
-
-  it("rounds to the nearest minor unit", () => {
-    expect(calculateTax(999, "US")).toBe(80);
-  });
-
-  it("is zero for a country with no configured rate", () => {
+  it("is zero for every country — no tax rate configured for Pakistan launch", () => {
+    expect(calculateTax(10000, "PK")).toBe(0);
+    expect(calculateTax(10000, "US")).toBe(0);
     expect(calculateTax(10000, "FR")).toBe(0);
   });
 });

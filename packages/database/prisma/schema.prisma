@@ -171,11 +171,17 @@ model Session {
 model Address {
   id          String  @id @default(uuid())
   userId      String? @map("user_id")
+  // Recipient name for this specific address — not on User, since a guest
+  // checkout (no User row at all) or a logged-in customer shipping to
+  // someone else both need it captured per-address, not per-account.
+  fullName    String?
   line1       String
   line2       String?
   city        String
   region      String?
-  postalCode  String  @map("postal_code")
+  // Optional (CHECKOUT_ARCHITECTURE — Pakistan launch): many Pakistani
+  // addresses are given without a postal code in practice.
+  postalCode  String? @map("postal_code")
   countryCode String  @map("country_code") @db.Char(2)
   phone       String?
   isDefault   Boolean @default(false) @map("is_default")
@@ -312,7 +318,7 @@ model Product {
   description    String?
   status         ProductStatus @default(draft)
   basePrice      Int           @map("base_price") // minor units
-  currency       String        @default("USD") @db.Char(3)
+  currency       String        @default("PKR") @db.Char(3)
   brandId        String?       @map("brand_id") // reserved for future multi-brand
   seoTitle       String?       @map("seo_title")
   seoDescription String?       @map("seo_description")
@@ -496,7 +502,7 @@ model Cart {
   id           String   @id @default(uuid())
   userId       String?  @map("user_id")
   sessionToken String?  @map("session_token")
-  currency     String   @default("USD") @db.Char(3)
+  currency     String   @default("PKR") @db.Char(3)
   expiresAt    DateTime @map("expires_at")
 
   createdAt DateTime @default(now()) @map("created_at")
@@ -542,6 +548,12 @@ enum OrderStatus {
   partially_refunded
 }
 
+/** Pakistan launch supports exactly these two (PAYMENT_ARCHITECTURE.md) — "online" is a real gateway integration deferred to a later phase; selecting it in the storefront is currently blocked client-side with a "coming soon" message rather than reachable through checkout.createIntent at all. */
+enum OrderPaymentMethod {
+  cod
+  online
+}
+
 enum OrderEventTrigger {
   customer
   admin
@@ -562,7 +574,19 @@ model Order {
   discountTotal Int    @default(0) @map("discount_total")
   giftCardTotal Int    @default(0) @map("gift_card_total")
   grandTotal    Int    @map("grand_total")
-  currency      String @default("USD") @db.Char(3)
+  currency      String @default("PKR") @db.Char(3)
+
+  // Pakistan checkout redesign — how the order was placed and how it ships.
+  // "online" never reaches this table in practice yet (blocked client-side
+  // with a "coming soon" message before checkout.createIntent is ever
+  // called for it); the enum exists so the column is ready the day a real
+  // gateway is wired up, without another migration.
+  paymentMethod  OrderPaymentMethod @default(cod) @map("payment_method")
+  shippingMethod String             @default("standard") @map("shipping_method")
+  // Customer-entered note at checkout ("leave with the guard", "call before
+  // delivery") — distinct from OrderNote below, which is admin/CS-authored
+  // internal operational notes.
+  customerNote   String?            @map("customer_note")
 
   shippingAddressId String  @map("shipping_address_id")
   billingAddressId  String  @map("billing_address_id")
@@ -671,7 +695,7 @@ model Payment {
   stripePaymentIntentId String        @unique @map("stripe_payment_intent_id")
   status                PaymentStatus @default(requires_action)
   amount                Int
-  currency              String        @default("USD") @db.Char(3)
+  currency              String        @default("PKR") @db.Char(3)
 
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
@@ -858,7 +882,7 @@ model GiftCard {
   code           String    @unique
   initialBalance Int       @map("initial_balance")
   currentBalance Int       @map("current_balance")
-  currency       String    @default("USD") @db.Char(3)
+  currency       String    @default("PKR") @db.Char(3)
   issuedToEmail  String?   @map("issued_to_email")
   expiresAt      DateTime? @map("expires_at")
   isActive       Boolean   @default(true) @map("is_active")

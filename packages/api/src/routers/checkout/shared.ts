@@ -2,28 +2,30 @@ import { prisma, type Prisma } from "@silonya/database";
 import { calculateDiscountAmount, type DiscountKind } from "@silonya/utils";
 import { TRPCError } from "@trpc/server";
 
-export const CURRENCY = "USD";
+export const CURRENCY = "PKR";
 
 interface AddressFormInput {
+  fullName: string;
   line1: string;
   line2?: string | undefined;
   city: string;
   region?: string | undefined;
-  postalCode: string;
+  postalCode?: string | undefined;
   countryCode: string;
-  phone?: string | undefined;
+  phone: string;
 }
 
 /** Zod types optional fields as `X | undefined`; Prisma's generated input wants `X | null` under exactOptionalPropertyTypes — never the literal `undefined`. When a customer is logged in, the checkout address is attached to their account so it appears in their saved addresses afterward; guest checkout (userId omitted) keeps it unattached, as before. */
 export function toAddressCreateInput(address: AddressFormInput, userId?: string | null) {
   return {
+    fullName: address.fullName,
     line1: address.line1,
     line2: address.line2 ?? null,
     city: address.city,
     region: address.region ?? null,
-    postalCode: address.postalCode,
+    postalCode: address.postalCode ?? null,
     countryCode: address.countryCode,
-    phone: address.phone ?? null,
+    phone: address.phone,
     userId: userId ?? null,
   };
 }

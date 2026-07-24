@@ -1,6 +1,6 @@
 "use client";
 
-import { Footer, Header, ThemeProvider, Toaster } from "@silonya/ui";
+import { Footer, Header, ThemeProvider, Toaster, Wordmark } from "@silonya/ui";
 import Link from "next/link";
 import type { ReactNode } from "react";
 import { HeaderActions } from "@/components/HeaderActions";
@@ -20,14 +20,10 @@ export interface FooterSection {
 // This wrapper exists purely to keep that prop-passing on the client side of
 // the boundary; layout.tsx stays a Server Component so it can still export
 // `metadata`.
-// Tracking widened to ~10% of type size (tracking-widest) rather than the
-// prior tracking-wide — a wordmark-only logo (identity strategy: no mascot,
-// see the brand identity artifact) relies on open tracking for its presence,
-// since there's no accompanying symbol to carry visual weight.
-function Wordmark() {
+function Logo() {
   return (
-    <Link href="/" className="font-display text-ink text-xl tracking-widest">
-      SILONYA
+    <Link href="/">
+      <Wordmark className="text-xl" />
     </Link>
   );
 }
@@ -59,10 +55,10 @@ export function AppShell({
     <CustomerSessionProvider loggedIn={loggedIn}>
       <SessionRefresher />
       <ThemeProvider>
-        <Header logo={<Wordmark />} items={primaryNav} actions={<HeaderActions />} linkAs={Link} />
+        <Header logo={<Logo />} items={primaryNav} actions={<HeaderActions />} linkAs={Link} />
         <main className="flex-1">{children}</main>
         <Footer
-          logo={<Wordmark />}
+          logo={<Logo />}
           columns={columns}
           legalLinks={legalLinks}
           socialLinks={footerSocialLinks}

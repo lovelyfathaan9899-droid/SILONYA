@@ -13,18 +13,21 @@ function uniqueEmail() {
 }
 
 const SHIPPING_ADDRESS = {
-  line1: "1 Market St",
-  city: "San Francisco",
-  region: "CA",
-  postalCode: "94105",
-  countryCode: "US",
+  fullName: "Ayesha Khan",
+  line1: "House 12, Street 4, F-8/3",
+  line2: "Near Kohsar Market",
+  city: "Islamabad",
+  region: "Islamabad Capital Territory",
+  postalCode: "44000",
+  countryCode: "PK",
+  phone: "+923001234567",
 };
 
-/** $200 basePrice clears the free-shipping threshold, and a 100%-off automatic discount then zeroes the rest — the documented "fully covered, no Stripe call" path (checkout/index.ts), so these tests exercise the real reservation → order → discount-redemption transaction without needing a network call to Stripe. */
+/** PKR 6,000 basePrice clears the standard-shipping free threshold (PKR 5,000), and a 100%-off automatic discount then zeroes the subtotal — together the order is fully covered, landing on the "paid" (not "processing") status path (checkout/index.ts), so these tests exercise the real reservation → order → discount-redemption transaction without needing cash due on delivery. */
 async function createFullyDiscountedProduct(
   overrides: Parameters<typeof createProductWithVariant>[0] = {},
 ) {
-  const fixture = await createProductWithVariant({ basePrice: 20000, ...overrides });
+  const fixture = await createProductWithVariant({ basePrice: 600000, ...overrides });
   await prisma.discount.create({
     data: { code: null, type: "percentage", value: 100 },
   });
@@ -42,6 +45,8 @@ describe("checkout.createIntent (integration)", () => {
       items: [{ variantId: variant.id, quantity: 1 }],
       guestEmail: uniqueEmail(),
       shippingAddress: SHIPPING_ADDRESS,
+      paymentMethod: "cod" as const,
+      shippingMethod: "standard" as const,
     });
 
     expect(result.orderId).toBeTruthy();
@@ -72,6 +77,8 @@ describe("checkout.createIntent (integration)", () => {
         items: [{ variantId: variant.id, quantity: 1 }],
         guestEmail: email,
         shippingAddress: SHIPPING_ADDRESS,
+        paymentMethod: "cod" as const,
+        shippingMethod: "standard" as const,
       }),
     ).rejects.toMatchObject({ code: "CONFLICT" } satisfies Partial<TRPCError>);
 
@@ -106,6 +113,8 @@ describe("checkout.createIntent (integration)", () => {
           items: [{ variantId: variant.id, quantity: 1 }],
           guestEmail: uniqueEmail(),
           shippingAddress: SHIPPING_ADDRESS,
+          paymentMethod: "cod" as const,
+          shippingMethod: "standard" as const,
         }),
       ),
     );
@@ -129,5 +138,87 @@ describe("checkout.createIntent (integration)", () => {
 
     const paidOrders = await prisma.order.count({ where: { status: "paid" } });
     expect(paidOrders).toBe(AVAILABLE);
+  });
+
+  it("creates a non-zero-total COD order as 'processing' with cash due on delivery, no Stripe involved", async () => {
+    const { variant } = await createProductWithVariant({
+      basePrice: 150000, // PKR 1,500 — real balance due, below the free-shipping threshold
+      quantityOnHand: 5,
+      quantityReserved: 0,
+    });
+
+    const result = await caller().checkout.createIntent({
+      items: [{ variantId: variant.id, quantity: 1 }],
+      guestEmail: uniqueEmail(),
+      shippingAddress: SHIPPING_ADDRESS,
+      paymentMethod: "cod",
+      shippingMethod: "standard",
+    });
+
+    const order = await prisma.order.findUniqueOrThrow({
+      where: { id: result.orderId },
+      include: { payment: true },
+    });
+    expect(order.status).toBe("processing");
+    expect(order.paymentMethod).toBe("cod");
+    expect(order.shippingMethod).toBe("standard");
+    expect(order.grandTotal).toBeGreaterThan(0);
+    expect(order.currency).toBe("PKR");
+    expect(order.placedAt).not.toBeNull();
+    // No payment gateway involved for COD — no Payment row is ever created.
+    expect(order.payment).toBeNull();
+
+    const inventory = await prisma.inventory.findFirstOrThrow({
+      where: { variantId: variant.id },
+    });
+    expect(inventory.quantityOnHand).toBe(4);
+    expect(inventory.quantityReserved).toBe(0);
+  });
+
+  it("charges the express shipping rate regardless of subtotal", async () => {
+    const { variant } = await createProductWithVariant({
+      basePrice: 900000, // PKR 9,000 — well above the standard free-shipping threshold
+      quantityOnHand: 5,
+      quantityReserved: 0,
+    });
+
+    const result = await caller().checkout.createIntent({
+      items: [{ variantId: variant.id, quantity: 1 }],
+      guestEmail: uniqueEmail(),
+      shippingAddress: SHIPPING_ADDRESS,
+      paymentMethod: "cod",
+      shippingMethod: "express",
+    });
+
+    const order = await prisma.order.findUniqueOrThrow({ where: { id: result.orderId } });
+    expect(order.shippingMethod).toBe("express");
+    expect(order.shippingTotal).toBe(50000); // PKR 500 — never waived by order size
+  });
+
+  it("rejects 'online' as a payment method before touching inventory or creating an order", async () => {
+    const { variant } = await createProductWithVariant({
+      quantityOnHand: 5,
+      quantityReserved: 0,
+    });
+    const email = uniqueEmail();
+
+    await expect(
+      caller().checkout.createIntent({
+        items: [{ variantId: variant.id, quantity: 1 }],
+        guestEmail: email,
+        shippingAddress: SHIPPING_ADDRESS,
+        paymentMethod: "online",
+        shippingMethod: "standard",
+      }),
+    ).rejects.toMatchObject({ code: "BAD_REQUEST" } satisfies Partial<TRPCError>);
+
+    const orders = await prisma.order.count({ where: { guestEmail: email } });
+    expect(orders).toBe(0);
+
+    const inventory = await prisma.inventory.findFirstOrThrow({
+      where: { variantId: variant.id },
+    });
+    expect(inventory.quantityOnHand).toBe(5);
+    expect(inventory.quantityReserved).toBe(0);
   });
 });

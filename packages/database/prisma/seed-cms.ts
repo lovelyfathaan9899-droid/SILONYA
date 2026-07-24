@@ -2,10 +2,12 @@ import type { PrismaClient } from "@prisma/client";
 
 /**
  * Sample CMS content (Phase 10 — SEARCH, CMS & ANALYTICS) so the homepage's
- * hero/promo/editorial sections, footer, and a handful of real static/
- * editorial/lookbook pages exist from a fresh seed — replacing the
- * lib/homepage-content.ts and lib/nav-data.ts hardcoded "#" placeholders
- * that predate this phase. Idempotent — safe to re-run.
+ * hero/promo/editorial sections, footer, and a handful of real static pages
+ * exist from a fresh seed — replacing the lib/homepage-content.ts and
+ * lib/nav-data.ts hardcoded "#" placeholders that predate this phase.
+ * Idempotent — safe to re-run. No lookbook pages are seeded here (Pakistan
+ * launch removed the demo lookbook content, apps/web/app/lookbooks/**) —
+ * the "lookbook" Page type/admin management UI still exists for later use.
  */
 export async function seedCms(prisma: PrismaClient): Promise<void> {
   await prisma.contentBlock.upsert({
@@ -26,7 +28,7 @@ export async function seedCms(prisma: PrismaClient): Promise<void> {
   await prisma.contentBlock.upsert({
     where: { type: "promo_banner" },
     update: {},
-    create: { type: "promo_banner", body: "Complimentary shipping on orders over $200." },
+    create: { type: "promo_banner", body: "Free standard delivery on orders over PKR 5,000." },
   });
 
   await prisma.contentBlock.upsert({
@@ -34,12 +36,12 @@ export async function seedCms(prisma: PrismaClient): Promise<void> {
     update: {},
     create: {
       type: "editorial",
-      eyebrow: "The Journal",
+      eyebrow: "The Edit",
       heading: "Considered, not trend-driven",
-      body: "Every SILONYA piece starts with the cloth. We work with a small group of mills across Italy and Japan, choosing fabrications for how they'll wear in — not just how they photograph on day one.",
+      body: "Every SILONYA piece is chosen for how it wears in over time — quality cloth and quiet construction, not just how it photographs on day one.",
       imageUrl: "https://placehold.co/1200x1500/e7e4de/111111.png?text=SILONYA+Journal",
-      imageAlt: "Behind the making of a SILONYA wool coat",
-      ctaLabel: "Read our story",
+      imageAlt: "SILONYA editorial photograph",
+      ctaLabel: "Shop the Essentials",
       ctaHref: "/collections/the-essentials",
     },
   });
@@ -53,10 +55,16 @@ export async function seedCms(prisma: PrismaClient): Promise<void> {
     heroImageUrl?: string;
   }[] = [
     {
-      slug: "shipping-returns",
+      slug: "shipping-policy",
       type: "static_page",
-      title: "Shipping & Returns",
-      body: "We ship worldwide from our fulfillment center. Standard shipping is complimentary on orders over $200; otherwise a flat rate applies at checkout.\n\nReturns are accepted within 30 days of delivery, provided the item is unworn and in its original packaging. Refunds are issued to the original payment method once the return is received and inspected.",
+      title: "Shipping Policy",
+      body: "We currently ship within Pakistan. Standard Delivery takes 2-5 business days; Express Delivery takes 1-2 business days. Free Standard Delivery applies on orders over PKR 5,000; otherwise a flat delivery fee applies at checkout.\n\nCash on Delivery is available on every order. Online payment is coming soon.",
+    },
+    {
+      slug: "return-policy",
+      type: "static_page",
+      title: "Return Policy",
+      body: "Returns are accepted within 7 days of delivery, provided the item is unworn, unwashed, and in its original packaging with tags attached.\n\nTo start a return, contact us with your order number. Once the return is received and inspected, a refund or exchange is issued.",
     },
     {
       slug: "size-guide",
@@ -71,22 +79,10 @@ export async function seedCms(prisma: PrismaClient): Promise<void> {
       body: "For order support, product questions, or anything else, reach us at hello@silonya.com. We aim to respond within one business day.",
     },
     {
-      slug: "our-story",
+      slug: "about",
       type: "static_page",
-      title: "Our Story",
-      body: "SILONYA was founded on a simple idea: clothing should be made to be worn for years, not seasons. We work directly with a small group of mills and workshops, choosing quality of construction over speed to market.",
-    },
-    {
-      slug: "sustainability",
-      type: "static_page",
-      title: "Sustainability",
-      body: "We believe the most sustainable garment is one that lasts. We favor durable natural fibers, limited production runs to avoid overproduction, and manufacturing partners we've vetted for fair labor practices.",
-    },
-    {
-      slug: "careers",
-      type: "static_page",
-      title: "Careers",
-      body: "We're not currently hiring, but we're always glad to hear from people who care about considered, well-made clothing. Reach out at careers@silonya.com.",
+      title: "About",
+      body: "SILONYA is a fashion label built on considered pieces made to be worn for years, not seasons — quality cloth and quiet construction over trend.\n\nFor order support or any other questions, reach us at hello@silonya.com.",
     },
     {
       slug: "privacy-policy",
@@ -98,21 +94,7 @@ export async function seedCms(prisma: PrismaClient): Promise<void> {
       slug: "terms-of-service",
       type: "static_page",
       title: "Terms of Service",
-      body: "By using this site and placing an order, you agree to our standard terms of sale: prices are listed in USD, orders are subject to availability, and all sales are final except as described in our Shipping & Returns policy.",
-    },
-    {
-      slug: "the-atelier-notebook",
-      type: "editorial",
-      title: "The Atelier Notebook",
-      body: "A running account of the small decisions behind every piece — the mills we visit, the samples that don't make the cut, and the details that do.",
-      heroImageUrl: "https://placehold.co/1600x900/e7e4de/111111.png?text=Atelier+Notebook",
-    },
-    {
-      slug: "autumn-editorial",
-      type: "lookbook",
-      title: "Autumn 2026",
-      body: "Layered wool, quiet color, and the pieces that carry a wardrobe through the coldest months.\n\nShot on location, styled the way we'd actually wear it.",
-      heroImageUrl: "https://placehold.co/1600x900/e7e4de/111111.png?text=Autumn+2026+Lookbook",
+      body: "By using this site and placing an order, you agree to our standard terms of sale: prices are listed in Pakistani Rupees (PKR), orders are subject to availability, and all sales are final except as described in our Return Policy. Cash on Delivery is available on every order; online payment is coming soon.",
     },
   ];
 
@@ -152,21 +134,20 @@ export async function seedCms(prisma: PrismaClient): Promise<void> {
     },
     {
       category: "Shipping",
-      question: "How long does shipping take?",
+      question: "How long does delivery take?",
       answer:
-        "Most orders arrive within 3-7 business days domestically, and 7-14 business days internationally.",
+        "Standard Delivery takes 2-5 business days; Express Delivery takes 1-2 business days, both within Pakistan.",
     },
     {
-      category: "Shipping",
-      question: "Do you ship internationally?",
-      answer:
-        "Yes, we ship worldwide. Duties and taxes for international orders are calculated at checkout.",
+      category: "Payment",
+      question: "How can I pay?",
+      answer: "Cash on Delivery is available on every order. Online payment is coming soon.",
     },
     {
       category: "Returns",
       question: "What is your return policy?",
       answer:
-        "Unworn items in original packaging can be returned within 30 days of delivery for a full refund to your original payment method.",
+        "Unworn, unwashed items in original packaging with tags attached can be returned within 7 days of delivery for a refund or exchange.",
     },
     {
       category: "Sizing",
@@ -188,14 +169,10 @@ export async function seedCms(prisma: PrismaClient): Promise<void> {
   console.warn(`Seeded ${String(faqCreated)} new FAQ items.`);
 
   const footerLinks: { section: string; label: string; href: string }[] = [
-    { section: "Help", label: "Shipping & Returns", href: "/pages/shipping-returns" },
-    { section: "Help", label: "Size Guide", href: "/pages/size-guide" },
-    { section: "Help", label: "FAQ", href: "/faq" },
-    { section: "Help", label: "Contact", href: "/pages/contact" },
-    { section: "About", label: "Our Story", href: "/pages/our-story" },
-    { section: "About", label: "Sustainability", href: "/pages/sustainability" },
-    { section: "About", label: "Careers", href: "/pages/careers" },
-    { section: "About", label: "Lookbooks", href: "/lookbooks" },
+    { section: "Company", label: "About", href: "/pages/about" },
+    { section: "Company", label: "Contact", href: "/pages/contact" },
+    { section: "Policies", label: "Shipping Policy", href: "/pages/shipping-policy" },
+    { section: "Policies", label: "Return Policy", href: "/pages/return-policy" },
     { section: "Legal", label: "Privacy Policy", href: "/pages/privacy-policy" },
     { section: "Legal", label: "Terms of Service", href: "/pages/terms-of-service" },
   ];

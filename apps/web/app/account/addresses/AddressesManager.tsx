@@ -46,7 +46,7 @@ function toForm(address: Address): AddressForm {
     line2: address.line2 ?? "",
     city: address.city,
     region: address.region ?? "",
-    postalCode: address.postalCode,
+    postalCode: address.postalCode ?? "",
     countryCode: address.countryCode,
     phone: address.phone ?? "",
   };

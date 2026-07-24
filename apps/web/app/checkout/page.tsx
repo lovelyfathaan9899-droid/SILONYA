@@ -1,43 +1,70 @@
 "use client";
 
-import { Button, Checkbox, EmptyState, Input, Label, PriceDisplay, Section } from "@silonya/ui";
-import { calculateShipping, calculateTax, formatPriceForDisplay } from "@silonya/utils";
+import {
+  Button,
+  Checkbox,
+  EmptyState,
+  Input,
+  Label,
+  PriceDisplay,
+  Section,
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+  Textarea,
+} from "@silonya/ui";
+import { calculateShipping, formatPriceForDisplay, type ShippingMethod } from "@silonya/utils";
 import Link from "next/link";
 import { useEffect, useState, type ChangeEvent, type SyntheticEvent } from "react";
+import { COUNTRIES, DEFAULT_COUNTRY_CODE, DIAL_CODES, PAKISTAN_PROVINCES } from "@/lib/countries";
 import { useCartStore } from "@/lib/stores/cartStore";
 import { trpcClient } from "@/lib/trpc-client";
 
 interface AddressForm {
+  fullName: string;
   line1: string;
   line2: string;
   city: string;
   region: string;
   postalCode: string;
   countryCode: string;
-  phone: string;
+  phoneDialCode: string;
+  phoneNumber: string;
 }
 
+const defaultCountry = COUNTRIES.find((c) => c.code === DEFAULT_COUNTRY_CODE) ?? COUNTRIES[0];
+
 const emptyAddress: AddressForm = {
+  fullName: "",
   line1: "",
   line2: "",
   city: "",
   region: "",
   postalCode: "",
-  countryCode: "US",
-  phone: "",
+  countryCode: DEFAULT_COUNTRY_CODE,
+  phoneDialCode: defaultCountry?.dialCode ?? "+92",
+  phoneNumber: "",
 };
 
 function toAddressInput(form: AddressForm) {
   return {
+    fullName: form.fullName.trim(),
     line1: form.line1.trim(),
     line2: form.line2.trim() || undefined,
     city: form.city.trim(),
     region: form.region.trim() || undefined,
-    postalCode: form.postalCode.trim(),
+    postalCode: form.postalCode.trim() || undefined,
     countryCode: form.countryCode.trim().toUpperCase(),
-    phone: form.phone.trim() || undefined,
+    phone: `${form.phoneDialCode} ${form.phoneNumber.trim()}`.trim(),
   };
 }
+
+const SHIPPING_OPTIONS: { value: ShippingMethod; label: string; eta: string }[] = [
+  { value: "standard", label: "Standard Delivery", eta: "2–5 Business Days" },
+  { value: "express", label: "Express Delivery", eta: "1–2 Business Days" },
+];
 
 export default function CheckoutPage() {
   const lines = useCartStore((state) => state.lines);
@@ -47,6 +74,9 @@ export default function CheckoutPage() {
   const [shipping, setShipping] = useState<AddressForm>(emptyAddress);
   const [billingSameAsShipping, setBillingSameAsShipping] = useState(true);
   const [billing, setBilling] = useState<AddressForm>(emptyAddress);
+  const [shippingMethod, setShippingMethod] = useState<ShippingMethod>("standard");
+  const [paymentMethod, setPaymentMethod] = useState<"cod" | "online">("cod");
+  const [customerNote, setCustomerNote] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [discountAmount, setDiscountAmount] = useState(0);
@@ -55,14 +85,10 @@ export default function CheckoutPage() {
   const [giftCardError, setGiftCardError] = useState<string | null>(null);
   const [checkingGiftCard, setCheckingGiftCard] = useState(false);
 
-  const currency = lines[0]?.currency ?? "USD";
+  const currency = lines[0]?.currency ?? "PKR";
   const subtotal = lines.reduce((sum, line) => sum + line.unitPrice * line.quantity, 0);
-  const estimatedShipping = calculateShipping(subtotal, false);
-  const estimatedTax = calculateTax(subtotal - discountAmount, shipping.countryCode || "US");
-  const totalBeforeGiftCard = Math.max(
-    0,
-    subtotal + estimatedShipping + estimatedTax - discountAmount,
-  );
+  const estimatedShipping = calculateShipping(subtotal, shippingMethod, false);
+  const totalBeforeGiftCard = Math.max(0, subtotal + estimatedShipping - discountAmount);
   const giftCardApplied =
     giftCardBalance !== null ? Math.min(giftCardBalance, totalBeforeGiftCard) : 0;
   const estimatedTotal = totalBeforeGiftCard - giftCardApplied;
@@ -106,6 +132,7 @@ export default function CheckoutPage() {
 
   async function handleSubmit(event: SyntheticEvent<HTMLFormElement>) {
     event.preventDefault();
+    if (paymentMethod !== "cod") return;
     setSubmitting(true);
     setError(null);
     try {
@@ -116,6 +143,9 @@ export default function CheckoutPage() {
         ...(billingSameAsShipping ? {} : { billingAddress: toAddressInput(billing) }),
         ...(discountCode ? { discountCode } : {}),
         ...(giftCardBalance !== null ? { giftCardCode: giftCardCode.trim() } : {}),
+        paymentMethod: "cod",
+        shippingMethod,
+        ...(customerNote.trim() ? { customerNote: customerNote.trim() } : {}),
       });
       window.location.href = result.checkoutUrl;
     } catch (err) {
@@ -190,10 +220,116 @@ export default function CheckoutPage() {
             />
           )}
 
+          <div className="flex flex-col gap-3">
+            <h2 className="font-display text-ink text-xl">Delivery method</h2>
+            <div className="flex flex-col gap-3 sm:flex-row">
+              {SHIPPING_OPTIONS.map((option) => {
+                const price = calculateShipping(subtotal, option.value, false);
+                return (
+                  <label
+                    key={option.value}
+                    aria-label={`${option.label}, ${option.eta}`}
+                    className={`flex flex-1 cursor-pointer items-start gap-3 border p-4 transition-colors ${
+                      shippingMethod === option.value
+                        ? "border-ink"
+                        : "border-mist hover:border-stone"
+                    }`}
+                  >
+                    <input
+                      type="radio"
+                      name="shippingMethod"
+                      value={option.value}
+                      checked={shippingMethod === option.value}
+                      onChange={() => {
+                        setShippingMethod(option.value);
+                      }}
+                      className="mt-1"
+                    />
+                    <span className="flex flex-col">
+                      <span className="text-ink font-sans text-sm font-medium">{option.label}</span>
+                      <span className="text-stone font-sans text-xs">{option.eta}</span>
+                      <span className="text-ink mt-1 font-sans text-sm">
+                        {price === 0 ? "Free" : formatPriceForDisplay(price, currency)}
+                      </span>
+                    </span>
+                  </label>
+                );
+              })}
+            </div>
+          </div>
+
+          <div className="flex flex-col gap-3">
+            <h2 className="font-display text-ink text-xl">Payment method</h2>
+            <div className="flex flex-col gap-3">
+              <label
+                className={`flex cursor-pointer items-center gap-3 border p-4 transition-colors ${
+                  paymentMethod === "cod" ? "border-ink" : "border-mist hover:border-stone"
+                }`}
+              >
+                <input
+                  type="radio"
+                  name="paymentMethod"
+                  value="cod"
+                  checked={paymentMethod === "cod"}
+                  onChange={() => {
+                    setPaymentMethod("cod");
+                  }}
+                />
+                <span className="text-ink font-sans text-sm font-medium">Cash on Delivery</span>
+              </label>
+              <label
+                aria-label="Online Payment"
+                className={`flex cursor-pointer flex-col gap-1 border p-4 transition-colors ${
+                  paymentMethod === "online" ? "border-ink" : "border-mist hover:border-stone"
+                }`}
+              >
+                <span className="flex items-center gap-3">
+                  <input
+                    type="radio"
+                    name="paymentMethod"
+                    value="online"
+                    checked={paymentMethod === "online"}
+                    onChange={() => {
+                      setPaymentMethod("online");
+                    }}
+                  />
+                  <span className="text-ink font-sans text-sm font-medium">Online Payment</span>
+                </span>
+                {paymentMethod === "online" ? (
+                  <p className="text-stone ml-7 font-sans text-xs">
+                    Online payment integration coming soon.
+                  </p>
+                ) : null}
+              </label>
+            </div>
+          </div>
+
+          <div className="flex flex-col gap-2">
+            <Label htmlFor="customer-note">Order notes (optional)</Label>
+            <Textarea
+              id="customer-note"
+              value={customerNote}
+              onChange={(event) => {
+                setCustomerNote(event.target.value);
+              }}
+              rows={3}
+              placeholder="Delivery instructions, landmark, preferred time…"
+            />
+          </div>
+
           {error ? <p className="text-error font-sans text-sm">{error}</p> : null}
 
-          <Button type="submit" size="lg" disabled={submitting} className="w-full lg:w-auto">
-            {submitting ? "Redirecting to payment…" : "Continue to payment"}
+          <Button
+            type="submit"
+            size="lg"
+            disabled={submitting || paymentMethod !== "cod"}
+            className="w-full lg:w-auto"
+          >
+            {paymentMethod !== "cod"
+              ? "Online payment coming soon"
+              : submitting
+                ? "Placing order…"
+                : "Place order"}
           </Button>
         </div>
 
@@ -215,12 +351,12 @@ export default function CheckoutPage() {
             <PriceDisplay price={subtotal} currency={currency} />
           </div>
           <div className="text-ink flex justify-between font-sans text-sm">
-            <span>Shipping (est.)</span>
-            <PriceDisplay price={estimatedShipping} currency={currency} />
-          </div>
-          <div className="text-ink flex justify-between font-sans text-sm">
-            <span>Tax (est.)</span>
-            <PriceDisplay price={estimatedTax} currency={currency} />
+            <span>Shipping</span>
+            {estimatedShipping === 0 ? (
+              <span>Free</span>
+            ) : (
+              <PriceDisplay price={estimatedShipping} currency={currency} />
+            )}
           </div>
           {discountAmount > 0 ? (
             <div className="text-ink flex justify-between font-sans text-sm">
@@ -236,12 +372,9 @@ export default function CheckoutPage() {
           ) : null}
           <hr className="border-mist" />
           <div className="text-ink flex justify-between font-sans text-base font-medium">
-            <span>Estimated total</span>
+            <span>Total</span>
             <PriceDisplay price={estimatedTotal} currency={currency} />
           </div>
-          <p className="text-stone font-sans text-xs">
-            Final totals are confirmed on the payment page.
-          </p>
 
           <hr className="border-mist" />
           <div className="flex flex-col gap-2">
@@ -307,34 +440,122 @@ function AddressFields({
     };
   }
 
+  const isPakistan = value.countryCode === "PK";
+
   return (
     <div className="flex flex-col gap-3">
       <h2 className="font-display text-ink text-xl">{heading}</h2>
-      <Label htmlFor={`${idPrefix}-line1`}>Address</Label>
-      <Input {...field("line1")} required placeholder="Street address" />
-      <Input {...field("line2")} placeholder="Apartment, suite, etc. (optional)" />
+
+      <Label htmlFor={`${idPrefix}-fullName`}>Full name</Label>
+      <Input {...field("fullName")} required placeholder="Full name" />
+
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-[7rem_1fr]">
+        <div>
+          <Label htmlFor={`${idPrefix}-phoneDialCode`}>Code</Label>
+          <Select
+            value={value.phoneDialCode}
+            onValueChange={(dialCode) => {
+              onChange({ ...value, phoneDialCode: dialCode });
+            }}
+          >
+            <SelectTrigger
+              id={`${idPrefix}-phoneDialCode`}
+              className="mt-1"
+              aria-label="Country calling code"
+            >
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {DIAL_CODES.map((option) => (
+                <SelectItem key={option.dialCode} value={option.dialCode}>
+                  {option.label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+        <div>
+          <Label htmlFor={`${idPrefix}-phoneNumber`}>Mobile number</Label>
+          <Input
+            id={`${idPrefix}-phoneNumber`}
+            type="tel"
+            required
+            value={value.phoneNumber}
+            onChange={(event) => {
+              onChange({ ...value, phoneNumber: event.target.value });
+            }}
+            placeholder={isPakistan ? "03XX XXXXXXX" : "Mobile number"}
+            className="mt-1"
+          />
+        </div>
+      </div>
+
+      <div>
+        <Label htmlFor={`${idPrefix}-countryCode`}>Country</Label>
+        <Select
+          value={value.countryCode}
+          onValueChange={(countryCode) => {
+            const matchingDialCode = COUNTRIES.find((c) => c.code === countryCode)?.dialCode;
+            onChange({
+              ...value,
+              countryCode,
+              region: "",
+              ...(matchingDialCode ? { phoneDialCode: matchingDialCode } : {}),
+            });
+          }}
+        >
+          <SelectTrigger id={`${idPrefix}-countryCode`} className="mt-1">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            {COUNTRIES.map((country) => (
+              <SelectItem key={country.code} value={country.code}>
+                {country.name}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </div>
+
       <div className="grid grid-cols-2 gap-3">
+        <div>
+          <Label htmlFor={`${idPrefix}-region`}>Province</Label>
+          {isPakistan ? (
+            <Select
+              value={value.region}
+              onValueChange={(region) => {
+                onChange({ ...value, region });
+              }}
+            >
+              <SelectTrigger id={`${idPrefix}-region`} className="mt-1" aria-label="Province">
+                <SelectValue placeholder="Select province" />
+              </SelectTrigger>
+              <SelectContent>
+                {PAKISTAN_PROVINCES.map((province) => (
+                  <SelectItem key={province} value={province}>
+                    {province}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          ) : (
+            <Input {...field("region")} className="mt-1" />
+          )}
+        </div>
         <div>
           <Label htmlFor={`${idPrefix}-city`}>City</Label>
           <Input {...field("city")} required className="mt-1" />
         </div>
-        <div>
-          <Label htmlFor={`${idPrefix}-region`}>State / Region</Label>
-          <Input {...field("region")} className="mt-1" />
-        </div>
       </div>
-      <div className="grid grid-cols-2 gap-3">
-        <div>
-          <Label htmlFor={`${idPrefix}-postalCode`}>Postal code</Label>
-          <Input {...field("postalCode")} required className="mt-1" />
-        </div>
-        <div>
-          <Label htmlFor={`${idPrefix}-countryCode`}>Country (2-letter code)</Label>
-          <Input {...field("countryCode")} required maxLength={2} className="mt-1 uppercase" />
-        </div>
-      </div>
-      <Label htmlFor={`${idPrefix}-phone`}>Phone (optional)</Label>
-      <Input {...field("phone")} type="tel" />
+
+      <Label htmlFor={`${idPrefix}-line2`}>Area / Town</Label>
+      <Input {...field("line2")} placeholder="Area or town" />
+
+      <Label htmlFor={`${idPrefix}-line1`}>Complete address</Label>
+      <Input {...field("line1")} required placeholder="House no., street, landmark" />
+
+      <Label htmlFor={`${idPrefix}-postalCode`}>Postal code (optional)</Label>
+      <Input {...field("postalCode")} />
     </div>
   );
 }

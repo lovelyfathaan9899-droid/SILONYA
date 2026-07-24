@@ -129,7 +129,7 @@ async function main() {
   });
   if (!existingDefaultWarehouse) {
     await prisma.warehouse.create({
-      data: { name: "Default Warehouse", countryCode: "US", isDefault: true },
+      data: { name: "Default Warehouse", countryCode: "PK", isDefault: true },
     });
     console.warn("Seeded default warehouse.");
   }
