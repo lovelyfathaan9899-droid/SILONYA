@@ -17,6 +17,8 @@ const buttonVariants = cva(
         secondary: "border border-ink bg-transparent text-ink hover:bg-mist",
         ghost: "bg-transparent text-ink hover:bg-mist",
         link: "bg-transparent text-ink underline-offset-4 hover:underline",
+        /** Reserved for irreversible/destructive confirmations (delete, permanent actions) — never used for routine negative actions like "Cancel". */
+        destructive: "bg-error text-white hover:bg-error/90",
       },
       size: {
         sm: "h-9 px-3 text-xs",

@@ -1,21 +1,10 @@
 "use client";
 
 import { Badge, Card, CardContent, CardHeader, CardTitle, Container, Section } from "@silonya/ui";
-import { formatPriceForDisplay } from "@silonya/utils";
+import { StatCard } from "@/components/StatCard";
+import { formatPKR } from "@/lib/currency";
 import { MiniBarChart } from "@/components/MiniBarChart";
 import { trpc } from "@/lib/trpc";
-
-function StatCard({ label, value, sub }: { label: string; value: string; sub?: string }) {
-  return (
-    <Card>
-      <CardContent className="pt-6">
-        <p className="text-stone font-sans text-xs uppercase tracking-wide">{label}</p>
-        <p className="text-ink font-display mt-1 text-2xl">{value}</p>
-        {sub ? <p className="text-stone mt-1 font-sans text-xs">{sub}</p> : null}
-      </CardContent>
-    </Card>
-  );
-}
 
 export default function AnalyticsPage() {
   const summary = trpc.adminAnalytics.summary.useQuery();
@@ -35,17 +24,17 @@ export default function AnalyticsPage() {
         <div className="mb-8 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
           <StatCard
             label="Revenue today"
-            value={formatPriceForDisplay(summary.data?.today.revenue ?? 0, "USD")}
+            value={formatPKR(summary.data?.today.revenue ?? 0)}
             sub={`${String(summary.data?.today.orders ?? 0)} orders`}
           />
           <StatCard
             label="Revenue this week"
-            value={formatPriceForDisplay(summary.data?.week.revenue ?? 0, "USD")}
+            value={formatPKR(summary.data?.week.revenue ?? 0)}
             sub={`${String(summary.data?.week.orders ?? 0)} orders`}
           />
           <StatCard
             label="Revenue this month"
-            value={formatPriceForDisplay(summary.data?.month.revenue ?? 0, "USD")}
+            value={formatPKR(summary.data?.month.revenue ?? 0)}
             sub={`${String(summary.data?.month.orders ?? 0)} orders`}
           />
           <StatCard
@@ -63,7 +52,7 @@ export default function AnalyticsPage() {
             <CardContent>
               <MiniBarChart
                 data={(revenueByDay.data ?? []).map((d) => ({ label: d.day, value: d.revenue }))}
-                formatValue={(v) => formatPriceForDisplay(v, "USD")}
+                formatValue={(v) => formatPKR(v)}
               />
             </CardContent>
           </Card>
@@ -99,7 +88,7 @@ export default function AnalyticsPage() {
                     <li key={row.productId} className="flex items-center justify-between">
                       <span className="text-ink font-sans text-sm">{row.name}</span>
                       <span className="text-stone font-sans text-xs">
-                        {row.unitsSold} sold · {formatPriceForDisplay(row.revenue, "USD")}
+                        {row.unitsSold} sold · {formatPKR(row.revenue)}
                       </span>
                     </li>
                   ))}
@@ -161,7 +150,7 @@ export default function AnalyticsPage() {
                   <li key={row.id} className="flex items-center justify-between">
                     <span className="text-ink font-sans text-sm">{row.code ?? "Automatic"}</span>
                     <span className="text-stone font-sans text-xs">
-                      {row.redemptions}× · {formatPriceForDisplay(row.totalDiscountGiven, "USD")}
+                      {row.redemptions}× · {formatPKR(row.totalDiscountGiven)}
                     </span>
                   </li>
                 ))}
@@ -177,19 +166,15 @@ export default function AnalyticsPage() {
               <ul className="flex flex-col gap-2 font-sans text-sm">
                 <li className="text-ink flex justify-between">
                   <span>Issued</span>
-                  <span>{formatPriceForDisplay(giftCardUsage.data?.totalIssued ?? 0, "USD")}</span>
+                  <span>{formatPKR(giftCardUsage.data?.totalIssued ?? 0)}</span>
                 </li>
                 <li className="text-ink flex justify-between">
                   <span>Redeemed</span>
-                  <span>
-                    {formatPriceForDisplay(giftCardUsage.data?.totalRedeemed ?? 0, "USD")}
-                  </span>
+                  <span>{formatPKR(giftCardUsage.data?.totalRedeemed ?? 0)}</span>
                 </li>
                 <li className="text-ink flex justify-between">
                   <span>Outstanding</span>
-                  <span>
-                    {formatPriceForDisplay(giftCardUsage.data?.outstandingBalance ?? 0, "USD")}
-                  </span>
+                  <span>{formatPKR(giftCardUsage.data?.outstandingBalance ?? 0)}</span>
                 </li>
               </ul>
             </CardContent>

@@ -3,6 +3,7 @@
 import {
   Badge,
   Button,
+  ConfirmDialog,
   Container,
   DataTable,
   Dialog,
@@ -12,6 +13,10 @@ import {
   DialogHeader,
   DialogTitle,
   DialogTrigger,
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
   EmptyState,
   ErrorState,
   Input,
@@ -24,11 +29,11 @@ import {
   SelectValue,
   toast,
 } from "@silonya/ui";
-import { formatPriceForDisplay } from "@silonya/utils";
-import { Package, Plus } from "lucide-react";
+import { Copy, ExternalLink, MoreVertical, Package, Plus, RotateCcw, Trash2 } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
+import { formatPKR } from "@/lib/currency";
 import { trpc } from "@/lib/trpc";
 
 type StatusFilter = "all" | "draft" | "active" | "archived";
@@ -40,8 +45,13 @@ interface ProductRow {
   status: string;
   basePrice: number;
   currency: string;
+  thumbnailUrl: string | null;
+  categoryName: string | null;
   variantCount: number;
+  primarySku: string | null;
   totalStock: number;
+  totalReserved: number;
+  createdAt: Date;
 }
 
 function NewProductDialog() {
@@ -112,10 +122,166 @@ function NewProductDialog() {
   );
 }
 
+function RowActions({ row }: { row: ProductRow }) {
+  const utils = trpc.useUtils();
+  const [deleteOpen, setDeleteOpen] = useState(false);
+  const invalidate = () => utils.adminCatalog.products.list.invalidate();
+
+  const activate = trpc.adminCatalog.products.activate.useMutation({
+    onSuccess: async () => {
+      toast({ title: "Product activated", variant: "success" });
+      await invalidate();
+    },
+    onError: (error) => {
+      toast({ title: "Couldn't activate", description: error.message, variant: "error" });
+    },
+  });
+  const deactivate = trpc.adminCatalog.products.deactivate.useMutation({
+    onSuccess: async () => {
+      toast({ title: "Product deactivated" });
+      await invalidate();
+    },
+    onError: (error) => {
+      toast({ title: "Couldn't deactivate", description: error.message, variant: "error" });
+    },
+  });
+  const archive = trpc.adminCatalog.products.archive.useMutation({
+    onSuccess: async () => {
+      toast({ title: "Product archived" });
+      await invalidate();
+    },
+    onError: (error) => {
+      toast({ title: "Couldn't archive", description: error.message, variant: "error" });
+    },
+  });
+  const duplicate = trpc.adminCatalog.products.duplicate.useMutation({
+    onSuccess: async () => {
+      toast({ title: "Product duplicated", variant: "success" });
+      await invalidate();
+    },
+    onError: (error) => {
+      toast({ title: "Couldn't duplicate", description: error.message, variant: "error" });
+    },
+  });
+  const softDelete = trpc.adminCatalog.products.softDelete.useMutation({
+    onSuccess: async () => {
+      toast({ title: "Product deleted" });
+      setDeleteOpen(false);
+      await invalidate();
+    },
+    onError: (error) => {
+      toast({ title: "Couldn't delete", description: error.message, variant: "error" });
+    },
+  });
+  const restore = trpc.adminCatalog.products.restore.useMutation({
+    onSuccess: async () => {
+      toast({ title: "Product restored", variant: "success" });
+      await invalidate();
+    },
+    onError: (error) => {
+      toast({ title: "Couldn't restore", description: error.message, variant: "error" });
+    },
+  });
+
+  return (
+    <>
+      <DropdownMenu>
+        <DropdownMenuTrigger asChild>
+          <Button variant="ghost" size="sm" aria-label={`Actions for ${row.name}`}>
+            <MoreVertical size={16} strokeWidth={1.5} aria-hidden="true" />
+          </Button>
+        </DropdownMenuTrigger>
+        <DropdownMenuContent align="end">
+          <DropdownMenuItem asChild>
+            <Link href={`/products/${row.id}`}>Edit</Link>
+          </DropdownMenuItem>
+          <DropdownMenuItem asChild>
+            <a
+              href={`${process.env.NEXT_PUBLIC_APP_URL ?? ""}/products/${row.slug}`}
+              target="_blank"
+              rel="noreferrer"
+            >
+              <ExternalLink size={14} strokeWidth={1.5} aria-hidden="true" className="mr-2" />
+              Preview
+            </a>
+          </DropdownMenuItem>
+          <DropdownMenuItem
+            onClick={() => {
+              duplicate.mutate({ id: row.id });
+            }}
+          >
+            <Copy size={14} strokeWidth={1.5} aria-hidden="true" className="mr-2" />
+            Duplicate
+          </DropdownMenuItem>
+          {row.status === "archived" ? (
+            <DropdownMenuItem
+              onClick={() => {
+                activate.mutate({ id: row.id });
+              }}
+            >
+              Activate
+            </DropdownMenuItem>
+          ) : null}
+          {row.status === "active" ? (
+            <DropdownMenuItem
+              onClick={() => {
+                deactivate.mutate({ id: row.id });
+              }}
+            >
+              Deactivate
+            </DropdownMenuItem>
+          ) : null}
+          {row.status !== "archived" ? (
+            <DropdownMenuItem
+              onClick={() => {
+                archive.mutate({ id: row.id });
+              }}
+            >
+              Archive
+            </DropdownMenuItem>
+          ) : (
+            <DropdownMenuItem
+              onClick={() => {
+                restore.mutate({ id: row.id });
+              }}
+            >
+              <RotateCcw size={14} strokeWidth={1.5} aria-hidden="true" className="mr-2" />
+              Restore
+            </DropdownMenuItem>
+          )}
+          <DropdownMenuItem
+            className="text-error"
+            onClick={() => {
+              setDeleteOpen(true);
+            }}
+          >
+            <Trash2 size={14} strokeWidth={1.5} aria-hidden="true" className="mr-2" />
+            Delete
+          </DropdownMenuItem>
+        </DropdownMenuContent>
+      </DropdownMenu>
+
+      <ConfirmDialog
+        open={deleteOpen}
+        onOpenChange={setDeleteOpen}
+        title="Delete this product?"
+        description={`This removes "${row.name}" from the storefront and admin listings. It can be restored later from a deleted product's row.`}
+        confirmLabel="Delete product"
+        isPending={softDelete.isPending}
+        requireTypedWord="DELETE"
+        onConfirm={() => {
+          softDelete.mutate({ id: row.id });
+        }}
+      />
+    </>
+  );
+}
+
 export default function ProductsPage() {
   const [search, setSearch] = useState("");
   const [debouncedSearch, setDebouncedSearch] = useState("");
   const [status, setStatus] = useState<StatusFilter>("all");
+  const [showDeleted, setShowDeleted] = useState(false);
 
   useEffect(() => {
     const timeout = setTimeout(() => {
@@ -129,8 +295,9 @@ export default function ProductsPage() {
   const query = trpc.adminCatalog.products.list.useInfiniteQuery(
     {
       limit: 20,
+      deletedOnly: showDeleted,
       ...(debouncedSearch ? { search: debouncedSearch } : {}),
-      ...(status !== "all" ? { status } : {}),
+      ...(status !== "all" && !showDeleted ? { status } : {}),
     },
     { getNextPageParam: (lastPage) => lastPage.nextCursor },
   );
@@ -161,7 +328,7 @@ export default function ProductsPage() {
               setStatus(value as StatusFilter);
             }}
           >
-            <SelectTrigger className="w-40" aria-label="Filter by status">
+            <SelectTrigger className="w-40" aria-label="Filter by status" disabled={showDeleted}>
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
@@ -171,6 +338,15 @@ export default function ProductsPage() {
               <SelectItem value="archived">Archived</SelectItem>
             </SelectContent>
           </Select>
+          <Button
+            variant={showDeleted ? "primary" : "secondary"}
+            size="sm"
+            onClick={() => {
+              setShowDeleted((prev) => !prev);
+            }}
+          >
+            {showDeleted ? "Showing deleted" : "Show deleted"}
+          </Button>
         </div>
 
         {query.isError ? (
@@ -191,6 +367,18 @@ export default function ProductsPage() {
           <DataTable<ProductRow>
             columns={[
               {
+                key: "thumbnailUrl",
+                header: "",
+                render: (row) =>
+                  row.thumbnailUrl ? (
+                    // eslint-disable-next-line @next/next/no-img-element -- Cloudinary URL, not a local static asset
+                    <img src={row.thumbnailUrl} alt="" className="bg-mist h-12 w-10 object-cover" />
+                  ) : (
+                    <div className="bg-mist h-12 w-10" aria-hidden="true" />
+                  ),
+                className: "w-16",
+              },
+              {
                 key: "name",
                 header: "Product",
                 render: (row) => (
@@ -201,6 +389,20 @@ export default function ProductsPage() {
                     {row.name}
                   </Link>
                 ),
+              },
+              {
+                key: "primarySku",
+                header: "SKU",
+                render: (row) => (
+                  <span className="text-stone font-sans text-xs">
+                    {row.primarySku ?? (row.variantCount > 1 ? "Multiple" : "—")}
+                  </span>
+                ),
+              },
+              {
+                key: "categoryName",
+                header: "Category",
+                render: (row) => row.categoryName ?? "—",
               },
               {
                 key: "status",
@@ -222,20 +424,43 @@ export default function ProductsPage() {
               {
                 key: "basePrice",
                 header: "Price",
-                render: (row) => formatPriceForDisplay(row.basePrice, row.currency),
+                render: (row) => formatPKR(row.basePrice),
               },
-              { key: "variantCount", header: "Variants" },
-              { key: "totalStock", header: "In stock" },
+              {
+                key: "totalStock",
+                header: "Stock (avail.)",
+                render: (row) => Math.max(row.totalStock - row.totalReserved, 0),
+              },
+              {
+                key: "createdAt",
+                header: "Created",
+                render: (row) => new Date(row.createdAt).toLocaleDateString("en-US"),
+              },
+              {
+                key: "id",
+                header: "",
+                id: "actions",
+                render: (row) => <RowActions row={row} />,
+                className: "w-12",
+              },
             ]}
             rows={rows}
             keyExtractor={(row) => row.id}
             isLoading={query.isLoading}
             emptyState={
-              <EmptyState
-                icon={Package}
-                title="No products yet"
-                description="Create your first product to get started."
-              />
+              showDeleted ? (
+                <EmptyState
+                  icon={Trash2}
+                  title="No deleted products"
+                  description="Products you delete show up here until restored."
+                />
+              ) : (
+                <EmptyState
+                  icon={Package}
+                  title="No products yet"
+                  description="Create your first product to get started."
+                />
+              )
             }
           />
         )}

@@ -37,6 +37,7 @@ export {
 } from "./primitives/Card";
 export { Breadcrumbs, type BreadcrumbsProps, type BreadcrumbItem } from "./primitives/Breadcrumbs";
 export { MobileDrawer, type MobileDrawerProps } from "./primitives/MobileDrawer";
+export { ConfirmDialog, type ConfirmDialogProps } from "./primitives/ConfirmDialog";
 export { Skeleton, type SkeletonProps } from "./primitives/Skeleton";
 export { Spinner, type SpinnerProps } from "./primitives/Spinner";
 export {

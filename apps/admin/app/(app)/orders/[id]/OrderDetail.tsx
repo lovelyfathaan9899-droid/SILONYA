@@ -24,7 +24,7 @@ import {
   Textarea,
   toast,
 } from "@silonya/ui";
-import { formatPriceForDisplay } from "@silonya/utils";
+import { formatPKR } from "@/lib/currency";
 import { useState } from "react";
 import { trpc } from "@/lib/trpc";
 
@@ -205,15 +205,7 @@ function UpdateStatusPanel({
   );
 }
 
-function RefundDialog({
-  orderId,
-  remaining,
-  currency,
-}: {
-  orderId: string;
-  remaining: number;
-  currency: string;
-}) {
+function RefundDialog({ orderId, remaining }: { orderId: string; remaining: number }) {
   const utils = trpc.useUtils();
   const [open, setOpen] = useState(false);
   const [amount, setAmount] = useState("");
@@ -245,14 +237,13 @@ function RefundDialog({
         <DialogHeader>
           <DialogTitle>Issue refund</DialogTitle>
           <DialogDescription>
-            Up to {formatPriceForDisplay(remaining, currency)} remains refundable on this order.
-            This charges the refund directly to the customer&apos;s original payment method via
-            Stripe.
+            Up to {formatPKR(remaining)} remains refundable on this order. This charges the refund
+            directly to the customer&apos;s original payment method via Stripe.
           </DialogDescription>
         </DialogHeader>
         <div className="flex flex-col gap-3">
           <div>
-            <Label htmlFor="refund-amount">Amount ({currency})</Label>
+            <Label htmlFor="refund-amount">Amount (PKR)</Label>
             <Input
               id="refund-amount"
               type="number"
@@ -429,32 +420,32 @@ export function OrderDetail({ orderId }: { orderId: string }) {
                       {item.variantLabelSnapshot ? ` (${item.variantLabelSnapshot})` : ""} ×{" "}
                       {item.quantity}
                     </span>
-                    <span>{formatPriceForDisplay(item.lineTotal, order.currency)}</span>
+                    <span>{formatPKR(item.lineTotal)}</span>
                   </li>
                 ))}
               </ul>
               <div className="border-mist text-ink mt-3 flex flex-col gap-1 border-t pt-3 font-sans text-sm">
                 <div className="flex justify-between">
                   <span>Subtotal</span>
-                  <span>{formatPriceForDisplay(order.subtotal, order.currency)}</span>
+                  <span>{formatPKR(order.subtotal)}</span>
                 </div>
                 <div className="flex justify-between">
                   <span>Shipping</span>
-                  <span>{formatPriceForDisplay(order.shippingTotal, order.currency)}</span>
+                  <span>{formatPKR(order.shippingTotal)}</span>
                 </div>
                 <div className="flex justify-between">
                   <span>Tax</span>
-                  <span>{formatPriceForDisplay(order.taxTotal, order.currency)}</span>
+                  <span>{formatPKR(order.taxTotal)}</span>
                 </div>
                 {order.discountTotal > 0 ? (
                   <div className="flex justify-between">
                     <span>Discount{order.discount?.code ? ` (${order.discount.code})` : ""}</span>
-                    <span>-{formatPriceForDisplay(order.discountTotal, order.currency)}</span>
+                    <span>-{formatPKR(order.discountTotal)}</span>
                   </div>
                 ) : null}
                 <div className="flex justify-between font-medium">
                   <span>Total</span>
-                  <span>{formatPriceForDisplay(order.grandTotal, order.currency)}</span>
+                  <span>{formatPKR(order.grandTotal)}</span>
                 </div>
               </div>
             </div>
@@ -508,7 +499,7 @@ export function OrderDetail({ orderId }: { orderId: string }) {
                   </div>
                   <div className="flex justify-between">
                     <span>Amount</span>
-                    <span>{formatPriceForDisplay(order.payment.amount, order.currency)}</span>
+                    <span>{formatPKR(order.payment.amount)}</span>
                   </div>
                   {order.payment.refunds.length > 0 ? (
                     <div className="border-mist mt-2 border-t pt-2">
@@ -516,12 +507,12 @@ export function OrderDetail({ orderId }: { orderId: string }) {
                       {order.payment.refunds.map((refund) => (
                         <div key={refund.id} className="flex justify-between text-xs">
                           <span>{refund.reason ?? "Refund"}</span>
-                          <span>{formatPriceForDisplay(refund.amount, order.currency)}</span>
+                          <span>{formatPKR(refund.amount)}</span>
                         </div>
                       ))}
                     </div>
                   ) : null}
-                  <RefundDialog orderId={orderId} remaining={remaining} currency={order.currency} />
+                  <RefundDialog orderId={orderId} remaining={remaining} />
                 </div>
               ) : (
                 <p className="text-stone font-sans text-sm">No payment on file.</p>

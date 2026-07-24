@@ -14,7 +14,7 @@ import {
   Section,
   Spinner,
 } from "@silonya/ui";
-import { formatPriceForDisplay } from "@silonya/utils";
+import { formatPKR } from "@/lib/currency";
 import { useParams } from "next/navigation";
 import { useState } from "react";
 import { trpc } from "@/lib/trpc";
@@ -180,7 +180,7 @@ export default function CustomerDetailPage() {
                       <div className="flex items-center gap-2">
                         <Badge variant="outline">{order.status.replace(/_/g, " ")}</Badge>
                         <span className="text-ink font-sans text-sm">
-                          {formatPriceForDisplay(order.grandTotal, order.currency)}
+                          {formatPKR(order.grandTotal)}
                         </span>
                       </div>
                     </li>

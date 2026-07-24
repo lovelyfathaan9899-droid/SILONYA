@@ -99,26 +99,26 @@ export async function generateReport(
   };
 }
 
-function toDollars(cents: number): string {
-  return (cents / 100).toFixed(2);
+function toRupees(minorUnits: number): string {
+  return new Intl.NumberFormat("en-US").format(Math.round(minorUnits / 100));
 }
 
 export function reportToCsv(summary: ReportSummary): string {
   const summaryCsv = toCsv([
     {
       Period: summary.rangeLabel,
-      "Revenue (USD)": toDollars(summary.revenue),
+      "Revenue (PKR)": toRupees(summary.revenue),
       Orders: summary.orders,
       "New Customers": summary.newCustomers,
-      "Discount Given (USD)": toDollars(summary.discountGiven),
-      "Gift Card Redeemed (USD)": toDollars(summary.giftCardRedeemed),
+      "Discount Given (PKR)": toRupees(summary.discountGiven),
+      "Gift Card Redeemed (PKR)": toRupees(summary.giftCardRedeemed),
     },
   ]);
   const productsCsv = toCsv(
     summary.topProducts.map((p) => ({
       Product: p.name,
       "Units Sold": p.unitsSold,
-      "Revenue (USD)": toDollars(p.revenue),
+      "Revenue (PKR)": toRupees(p.revenue),
     })),
   );
   return ["Summary", summaryCsv, "", "Top Products", productsCsv].join("\r\n");
@@ -134,24 +134,24 @@ export async function reportToExcelBuffer(summary: ReportSummary): Promise<Buffe
   ];
   summarySheet.addRows([
     { metric: "Period", value: summary.rangeLabel },
-    { metric: "Revenue (USD)", value: toDollars(summary.revenue) },
+    { metric: "Revenue (PKR)", value: toRupees(summary.revenue) },
     { metric: "Orders", value: summary.orders },
     { metric: "New Customers", value: summary.newCustomers },
-    { metric: "Discount Given (USD)", value: toDollars(summary.discountGiven) },
-    { metric: "Gift Card Redeemed (USD)", value: toDollars(summary.giftCardRedeemed) },
+    { metric: "Discount Given (PKR)", value: toRupees(summary.discountGiven) },
+    { metric: "Gift Card Redeemed (PKR)", value: toRupees(summary.giftCardRedeemed) },
   ]);
 
   const productsSheet = workbook.addWorksheet("Top Products");
   productsSheet.columns = [
     { header: "Product", key: "name", width: 32 },
     { header: "Units Sold", key: "unitsSold", width: 14 },
-    { header: "Revenue (USD)", key: "revenue", width: 16 },
+    { header: "Revenue (PKR)", key: "revenue", width: 16 },
   ];
   productsSheet.addRows(
     summary.topProducts.map((p) => ({
       name: p.name,
       unitsSold: p.unitsSold,
-      revenue: toDollars(p.revenue),
+      revenue: toRupees(p.revenue),
     })),
   );
 

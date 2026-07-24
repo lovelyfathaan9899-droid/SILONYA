@@ -1,8 +1,9 @@
 "use client";
 
 import { Button, Checkbox, Input, Label, Textarea, toast } from "@silonya/ui";
-import { formatPriceForDisplay, parsePriceToMinorUnits } from "@silonya/utils";
+import { parsePriceToMinorUnits } from "@silonya/utils";
 import { useState } from "react";
+import { formatPKR } from "@/lib/currency";
 import { trpc, type ProductDetail } from "@/lib/trpc";
 
 /** Minimal create-on-the-fly affordance — there's no standalone Category/Collection admin screen yet (out of scope for this phase), and without this a product could never satisfy the "needs a category or collection" publish requirement. */
@@ -51,7 +52,7 @@ export function DetailsTab({ product }: { product: ProductDetail }) {
   const [name, setName] = useState(product.name);
   const [description, setDescription] = useState(product.description ?? "");
   const [priceInput, setPriceInput] = useState(
-    formatPriceForDisplay(product.basePrice, product.currency).replace(/[^0-9.]/g, ""),
+    formatPKR(product.basePrice).replace(/[^0-9.]/g, ""),
   );
   const [seoTitle, setSeoTitle] = useState(product.seoTitle ?? "");
   const [seoDescription, setSeoDescription] = useState(product.seoDescription ?? "");
@@ -160,7 +161,7 @@ export function DetailsTab({ product }: { product: ProductDetail }) {
       </div>
 
       <div className="flex flex-col gap-2">
-        <Label htmlFor="detail-price">Base price ({product.currency})</Label>
+        <Label htmlFor="detail-price">Base price (PKR)</Label>
         <Input
           id="detail-price"
           value={priceInput}

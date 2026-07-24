@@ -11,7 +11,7 @@ import {
   Label,
   Section,
 } from "@silonya/ui";
-import { formatPriceForDisplay } from "@silonya/utils";
+import { formatPKR } from "@/lib/currency";
 import { Gift } from "lucide-react";
 import { useState } from "react";
 import { trpc } from "@/lib/trpc";
@@ -75,7 +75,7 @@ export default function GiftCardsPage() {
 
         {showForm ? (
           <div className="border-mist mb-8 flex max-w-md flex-col gap-3 border p-4">
-            <Label htmlFor="amount">Amount (dollars)</Label>
+            <Label htmlFor="amount">Amount (PKR)</Label>
             <Input
               id="amount"
               type="number"
@@ -115,7 +115,7 @@ export default function GiftCardsPage() {
                 key: "currentBalance",
                 header: "Balance",
                 render: (row) =>
-                  `${formatPriceForDisplay(row.currentBalance, row.currency)} / ${formatPriceForDisplay(row.initialBalance, row.currency)}`,
+                  `${formatPKR(row.currentBalance)} / ${formatPKR(row.initialBalance)}`,
               },
               {
                 key: "isActive",

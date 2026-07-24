@@ -76,6 +76,23 @@ export const mediaRouter = {
       });
     }),
 
+  /** Refines an image's alt text after upload — the batch multi-upload flow (MediaTab) auto-fills a generic default rather than blocking on a per-image prompt, so this is how an admin sharpens it afterward. */
+  updateAltText: catalogWrite
+    .input(z.object({ id: z.string().uuid(), altText: z.string().trim().min(1) }))
+    .mutation(async ({ input }) => {
+      try {
+        return await prisma.productMedia.update({
+          where: { id: input.id },
+          data: { altText: input.altText },
+        });
+      } catch (error) {
+        if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2025") {
+          throw new TRPCError({ code: "NOT_FOUND", message: "Image not found." });
+        }
+        throw error;
+      }
+    }),
+
   deleteMedia: catalogWrite
     .input(z.object({ id: z.string().uuid() }))
     .mutation(async ({ input }) => {
@@ -87,6 +104,27 @@ export const mediaRouter = {
         }
         throw error;
       }
+      return { success: true };
+    }),
+
+  /**
+   * Drag-to-reorder in MediaTab: the client sends the full new ordering for
+   * one product's gallery, and every listed image's `position` is set to its
+   * index in that array — position 0 is the cover image (ProductCard/PDP
+   * both already read media ordered by position ascending, so this is the
+   * only place "which image is the cover" is decided).
+   */
+  reorderMedia: catalogWrite
+    .input(z.object({ productId: z.string().uuid(), orderedIds: z.array(z.string().uuid()) }))
+    .mutation(async ({ input }) => {
+      await prisma.$transaction(
+        input.orderedIds.map((id, index) =>
+          prisma.productMedia.update({
+            where: { id, productId: input.productId },
+            data: { position: index },
+          }),
+        ),
+      );
       return { success: true };
     }),
 };

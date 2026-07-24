@@ -57,7 +57,7 @@ export const adminGiftCardsRouter = router({
     .input(
       z.object({
         initialBalance: z.number().int().min(100),
-        currency: z.string().trim().length(3).default("USD"),
+        currency: z.string().trim().length(3).default("PKR"),
         issuedToEmail: z.string().trim().email().optional(),
         expiresAt: z.coerce.date().optional(),
       }),

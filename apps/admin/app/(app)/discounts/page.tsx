@@ -18,6 +18,7 @@ import {
 } from "@silonya/ui";
 import { Tag } from "lucide-react";
 import { useState } from "react";
+import { formatPKR } from "@/lib/currency";
 import { trpc } from "@/lib/trpc";
 
 type DiscountType = "percentage" | "fixed_amount" | "free_shipping";
@@ -115,14 +116,14 @@ export default function DiscountsPage() {
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="percentage">Percentage</SelectItem>
-                <SelectItem value="fixed_amount">Fixed amount (cents)</SelectItem>
+                <SelectItem value="fixed_amount">Fixed amount (PKR paisa)</SelectItem>
                 <SelectItem value="free_shipping">Free shipping</SelectItem>
               </SelectContent>
             </Select>
             {form.type !== "free_shipping" ? (
               <>
                 <Label htmlFor="value">
-                  Value {form.type === "percentage" ? "(%)" : "(cents)"}
+                  Value {form.type === "percentage" ? "(%)" : "(PKR paisa)"}
                 </Label>
                 <Input
                   id="value"
@@ -152,7 +153,7 @@ export default function DiscountsPage() {
                 setForm({ ...form, perUserLimit: e.target.value });
               }}
             />
-            <Label htmlFor="minimumSubtotal">Minimum subtotal (optional, dollars)</Label>
+            <Label htmlFor="minimumSubtotal">Minimum subtotal (optional, PKR)</Label>
             <Input
               id="minimumSubtotal"
               type="number"
@@ -185,7 +186,7 @@ export default function DiscountsPage() {
                   row.type === "percentage"
                     ? `${String(row.value)}%`
                     : row.type === "fixed_amount"
-                      ? `${String(row.value)}¢`
+                      ? formatPKR(row.value)
                       : "—",
               },
               {

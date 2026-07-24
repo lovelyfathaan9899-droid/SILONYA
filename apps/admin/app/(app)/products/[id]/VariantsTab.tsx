@@ -18,9 +18,10 @@ import {
   SelectValue,
   toast,
 } from "@silonya/ui";
-import { formatPriceForDisplay, parsePriceToMinorUnits } from "@silonya/utils";
+import { parsePriceToMinorUnits } from "@silonya/utils";
 import { Trash2 } from "lucide-react";
 import { useState } from "react";
+import { formatPKR } from "@/lib/currency";
 import { trpc, type ProductDetail } from "@/lib/trpc";
 
 type Variant = ProductDetail["variants"][number];
@@ -115,7 +116,7 @@ function AddVariantDialog({ product }: { product: ProductDetail }) {
               onChange={(e) => {
                 setPrice(e.target.value);
               }}
-              placeholder={formatPriceForDisplay(product.basePrice, product.currency)}
+              placeholder={formatPKR(product.basePrice)}
               inputMode="decimal"
             />
           </div>
@@ -175,7 +176,7 @@ export function VariantsTab({ product }: { product: ProductDetail }) {
           {
             key: "price",
             header: "Price",
-            render: (v) => formatPriceForDisplay(v.price ?? product.basePrice, product.currency),
+            render: (v) => formatPKR(v.price ?? product.basePrice),
           },
           {
             key: "inventory",

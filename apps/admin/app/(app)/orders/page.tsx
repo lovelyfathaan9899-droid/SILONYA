@@ -15,7 +15,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@silonya/ui";
-import { formatPriceForDisplay } from "@silonya/utils";
+import { formatPKR } from "@/lib/currency";
 import { ShoppingBag } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -175,7 +175,7 @@ export default function OrdersPage() {
               {
                 key: "grandTotal",
                 header: "Total",
-                render: (row) => formatPriceForDisplay(row.grandTotal, row.currency),
+                render: (row) => formatPKR(row.grandTotal),
               },
               { key: "itemCount", header: "Items" },
               {
