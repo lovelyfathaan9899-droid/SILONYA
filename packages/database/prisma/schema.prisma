@@ -224,6 +224,7 @@ model AdminUser {
   sessions          AdminSession[]
   orderNotes        OrderNote[]
   orderStatusEvents OrderStatusEvent[]
+  notifications     NotificationLog[]
 
   @@index([roleId])
   @@map("admin_users")
@@ -539,8 +540,22 @@ enum OrderStatus {
   pending_payment
   payment_failed
   paid
+  // WhatsApp order-confirmation gate (WHATSAPP_ARCHITECTURE.md) — every
+  // non-zero-total order now starts here instead of jumping straight to
+  // "processing"; it becomes "confirmed" only once the customer taps
+  // Confirm on the WhatsApp message (or an admin overrides manually).
+  // Zero-total orders (fully covered by discount/gift card) skip this and
+  // still go straight to "paid" — there's no COD balance to confirm.
+  pending_confirmation
+  confirmed
+  // "processing" is kept only for orders that already reached it before
+  // this state was introduced — no new order is ever created into it, but
+  // removing it from the enum would require a data migration for existing
+  // rows, which isn't worth it for a display-label difference.
   processing
+  packed
   shipped
+  out_for_delivery
   delivered
   cancelled
   returned
@@ -614,6 +629,8 @@ model Order {
   discountRedemptions  DiscountRedemption[]
   notes                OrderNote[]
   giftCardTransactions GiftCardTransaction[]
+  whatsappMessages     WhatsAppMessage[]
+  whatsappEvents       WhatsAppEvent[]
 
   @@index([userId])
   @@index([status])
@@ -1034,11 +1051,213 @@ model SearchQueryLog {
 
 model ProcessedWebhookEvent {
   id          String   @id @default(uuid())
-  provider    String // e.g. "stripe"
+  provider    String // e.g. "stripe", "whatsapp"
   eventId     String   @unique @map("event_id")
   processedAt DateTime @default(now()) @map("processed_at")
 
   @@map("processed_webhook_events")
+}
+
+// ─────────────────────────────────────────────────────────────────────────
+// WhatsApp Business Cloud API — WHATSAPP_ARCHITECTURE.md
+//
+// Customer-facing transactional messaging (order confirmation, status
+// updates, interactive Confirm/Cancel/Help buttons). Separate from
+// NotificationLog below, which is the *internal* admin-alerting system
+// (dashboard/email/WhatsApp-to-business-number/browser-push) — these two
+// systems share a channel (WhatsApp) but not a table, since only this one
+// needs Meta delivery/read-receipt tracking and inbound button-reply
+// handling.
+// ─────────────────────────────────────────────────────────────────────────
+
+enum WhatsAppMessageType {
+  order_confirmation
+  status_update
+  shipped
+  delivered
+  cancelled
+  help_response
+  generic
+}
+
+enum WhatsAppMessageStatus {
+  queued
+  sending
+  sent
+  delivered
+  read
+  failed
+}
+
+/**
+ * One row per Meta-approved template this app is allowed to send —
+ * `name`/`language` must exactly match what's registered (and approved) in
+ * Meta Business Manager, since the Cloud API rejects sends referencing an
+ * unknown/unapproved template name. `bodyPreview` is reference copy for the
+ * admin panel only, never sent to Meta (the actual approved template
+ * content lives in Meta's system, not here).
+ */
+model WhatsAppTemplate {
+  id          String   @id @default(uuid())
+  name        String   @unique
+  category    String // Meta's template category: MARKETING | UTILITY | AUTHENTICATION
+  language    String   @default("en")
+  bodyPreview String?  @map("body_preview")
+  isActive    Boolean  @default(true) @map("is_active")
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  messages WhatsAppMessage[]
+
+  @@map("whatsapp_templates")
+}
+
+/**
+ * Every outbound WhatsApp send, queued-through-terminal. `payload` is the
+ * exact request body sent to the Cloud API (full audit trail, and lets a
+ * retry resend byte-for-byte instead of re-deriving state that may have
+ * since changed). `attempts`/`nextRetryAt` drive the DB-backed retry queue
+ * (services/whatsapp/retry-queue.ts) — 1/5/15/60-minute backoff, marked
+ * `failed` after the max attempt count.
+ */
+model WhatsAppMessage {
+  id                String                 @id @default(uuid())
+  orderId           String?                @map("order_id")
+  toPhone           String                 @map("to_phone")
+  type              WhatsAppMessageType
+  templateId        String?                @map("template_id")
+  payload           Json
+  status            WhatsAppMessageStatus  @default(queued)
+  providerMessageId String?                @unique @map("provider_message_id")
+  errorCode         String?                @map("error_code")
+  errorMessage      String?                @map("error_message")
+  attempts          Int                    @default(0)
+  nextRetryAt       DateTime?              @map("next_retry_at")
+  sentAt            DateTime?              @map("sent_at")
+  deliveredAt       DateTime?              @map("delivered_at")
+  readAt            DateTime?              @map("read_at")
+  failedAt          DateTime?              @map("failed_at")
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  order    Order?            @relation(fields: [orderId], references: [id], onDelete: SetNull)
+  template WhatsAppTemplate? @relation(fields: [templateId], references: [id], onDelete: SetNull)
+  events   WhatsAppEvent[]
+
+  @@index([orderId])
+  @@index([status, nextRetryAt])
+  @@map("whatsapp_messages")
+}
+
+enum WhatsAppEventType {
+  sent
+  delivered
+  read
+  failed
+  button_confirm
+  button_cancel
+  button_help
+  inbound_message
+}
+
+/**
+ * Full audit trail of every inbound webhook event and outbound
+ * status-transition, whether or not it's tied to a WhatsAppMessage row
+ * (e.g. an inbound button reply always references one; a free-text inbound
+ * message from a customer might not). `payload` keeps Meta's raw webhook
+ * body for forensics. `customerIp` is nullable by design — the WhatsApp
+ * Cloud API webhook never carries the end customer's IP address (the
+ * message is relayed through Meta's infrastructure, not a direct request
+ * from the customer's device), so this is populated only if a future,
+ * different capture point (e.g. a deep-link back to our own domain) can
+ * supply it; do not assume it's ever set for a pure webhook-sourced event.
+ */
+model WhatsAppEvent {
+  id          String            @id @default(uuid())
+  messageId   String?           @map("message_id")
+  orderId     String?           @map("order_id")
+  type        WhatsAppEventType
+  payload     Json
+  waMessageId String?           @map("wa_message_id")
+  fromPhone   String?           @map("from_phone")
+  customerIp  String?           @map("customer_ip")
+
+  createdAt DateTime @default(now()) @map("created_at")
+
+  message WhatsAppMessage? @relation(fields: [messageId], references: [id], onDelete: SetNull)
+  order   Order?           @relation(fields: [orderId], references: [id], onDelete: SetNull)
+
+  @@index([orderId])
+  @@index([messageId])
+  @@map("whatsapp_events")
+}
+
+// ─────────────────────────────────────────────────────────────────────────
+// Admin real-time notification system — NOTIFICATION_ARCHITECTURE.md
+//
+// One row per (notification, delivery channel, recipient). A "new order"
+// event fans out into several rows: one `dashboard` row per active admin
+// (independent read/archive state per admin), one `email` row per admin,
+// and one `whatsapp` row for the business number — all sharing the same
+// category/title/body so they're recognizably "the same event" in the
+// admin-facing history view.
+// ─────────────────────────────────────────────────────────────────────────
+
+enum NotificationCategory {
+  orders
+  customers
+  payments
+  inventory
+  reviews
+  system
+}
+
+enum NotificationChannel {
+  dashboard
+  email
+  whatsapp
+  browser_push
+}
+
+enum NotificationStatus {
+  pending
+  sent
+  delivered
+  read
+  failed
+}
+
+model NotificationLog {
+  id           String               @id @default(uuid())
+  category     NotificationCategory
+  channel      NotificationChannel
+  title        String
+  body         String
+  linkUrl      String?              @map("link_url")
+  // External-channel target (email address, E.164 phone) — null for
+  // `dashboard` rows, which are addressed via adminUserId instead.
+  recipient    String?
+  adminUserId  String?              @map("admin_user_id")
+  metadata     Json?
+  status       NotificationStatus   @default(pending)
+
+  sentAt       DateTime? @map("sent_at")
+  deliveredAt  DateTime? @map("delivered_at")
+  readAt       DateTime? @map("read_at")
+  clickedAt    DateTime? @map("clicked_at")
+  archivedAt   DateTime? @map("archived_at")
+  dismissedAt  DateTime? @map("dismissed_at")
+  errorMessage String?   @map("error_message")
+
+  createdAt DateTime @default(now()) @map("created_at")
+
+  adminUser AdminUser? @relation(fields: [adminUserId], references: [id], onDelete: Cascade)
+
+  @@index([adminUserId, readAt, createdAt])
+  @@index([category, createdAt])
+  @@map("notification_logs")
 }
 
 model Redirect {

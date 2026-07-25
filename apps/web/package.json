@@ -23,6 +23,7 @@
     "@silonya/auth": "workspace:*",
     "@silonya/database": "workspace:*",
     "@silonya/emails": "workspace:*",
+    "@silonya/whatsapp": "workspace:*",
     "@trpc/client": "^11.0.0",
     "@trpc/server": "^11.0.0",
     "lucide-react": "^0.469.0",

@@ -19,6 +19,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useState, type ReactNode } from "react";
 import { logoutAction } from "@/app/actions";
+import { NotificationBell } from "@/components/NotificationBell";
 import { SessionRefresher } from "@/components/SessionRefresher";
 
 const NAV_ITEMS = [
@@ -123,7 +124,7 @@ export function AdminShell({ children, adminEmail, adminRole }: AdminShellProps)
           <Wordmark className="text-lg" />
           <span className="text-stone font-sans text-xs uppercase tracking-wide">Admin</span>
         </span>
-        <span className="w-11" aria-hidden="true" />
+        <NotificationBell />
       </header>
 
       <MobileDrawer
@@ -152,7 +153,12 @@ export function AdminShell({ children, adminEmail, adminRole }: AdminShellProps)
         <AccountFooter adminEmail={adminEmail} adminRole={adminRole} />
       </aside>
 
-      <main className="bg-bone flex-1">{children}</main>
+      <div className="flex min-w-0 flex-1 flex-col">
+        <div className="border-mist bg-bone/95 sticky top-0 z-20 hidden h-14 items-center justify-end border-b px-4 backdrop-blur-sm lg:flex">
+          <NotificationBell />
+        </div>
+        <main className="bg-bone flex-1">{children}</main>
+      </div>
     </div>
   );
 }

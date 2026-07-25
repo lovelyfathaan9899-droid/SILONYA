@@ -7,6 +7,10 @@ import {
   WelcomeEmail,
   WishlistReminderEmail,
 } from "./templates/AccountEmails";
+import {
+  AdminNotificationEmail,
+  type AdminNotificationDetail,
+} from "./templates/AdminNotificationEmail";
 import { OrderConfirmationEmail } from "./templates/OrderConfirmationEmail";
 import { PaymentFailedEmail } from "./templates/PaymentFailedEmail";
 import {
@@ -34,6 +38,10 @@ export {
   WishlistReminderEmail,
   CouponEmail,
 } from "./templates/AccountEmails";
+export {
+  AdminNotificationEmail,
+  type AdminNotificationDetail,
+} from "./templates/AdminNotificationEmail";
 export type { OrderEmailData } from "./types";
 
 export async function sendOrderConfirmationEmail(order: OrderEmailData): Promise<void> {
@@ -168,6 +176,26 @@ export async function sendWishlistReminderEmail(input: {
       productName: input.productName,
       reason: input.reason,
       productUrl: input.productUrl,
+    }),
+  });
+}
+
+export async function sendAdminNotificationEmail(input: {
+  to: string;
+  subject: string;
+  title: string;
+  details: AdminNotificationDetail[];
+  linkUrl?: string;
+  linkLabel?: string;
+}): Promise<void> {
+  await sendEmail({
+    to: input.to,
+    subject: input.subject,
+    react: AdminNotificationEmail({
+      title: input.title,
+      details: input.details,
+      ...(input.linkUrl ? { linkUrl: input.linkUrl } : {}),
+      ...(input.linkLabel ? { linkLabel: input.linkLabel } : {}),
     }),
   });
 }

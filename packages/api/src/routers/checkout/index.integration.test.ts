@@ -23,7 +23,7 @@ const SHIPPING_ADDRESS = {
   phone: "+923001234567",
 };
 
-/** PKR 6,000 basePrice clears the standard-shipping free threshold (PKR 5,000), and a 100%-off automatic discount then zeroes the subtotal — together the order is fully covered, landing on the "paid" (not "processing") status path (checkout/index.ts), so these tests exercise the real reservation → order → discount-redemption transaction without needing cash due on delivery. */
+/** PKR 6,000 basePrice clears the standard-shipping free threshold (PKR 5,000), and a 100%-off automatic discount then zeroes the subtotal — together the order is fully covered, landing on the "paid" (not "pending_confirmation") status path (checkout/index.ts), so these tests exercise the real reservation → order → discount-redemption transaction without needing cash due on delivery or a WhatsApp confirmation step. */
 async function createFullyDiscountedProduct(
   overrides: Parameters<typeof createProductWithVariant>[0] = {},
 ) {
@@ -140,7 +140,7 @@ describe("checkout.createIntent (integration)", () => {
     expect(paidOrders).toBe(AVAILABLE);
   });
 
-  it("creates a non-zero-total COD order as 'processing' with cash due on delivery, no Stripe involved", async () => {
+  it("creates a non-zero-total COD order as 'pending_confirmation' with cash due on delivery, no Stripe involved", async () => {
     const { variant } = await createProductWithVariant({
       basePrice: 150000, // PKR 1,500 — real balance due, below the free-shipping threshold
       quantityOnHand: 5,
@@ -159,7 +159,7 @@ describe("checkout.createIntent (integration)", () => {
       where: { id: result.orderId },
       include: { payment: true },
     });
-    expect(order.status).toBe("processing");
+    expect(order.status).toBe("pending_confirmation");
     expect(order.paymentMethod).toBe("cod");
     expect(order.shippingMethod).toBe("standard");
     expect(order.grandTotal).toBeGreaterThan(0);

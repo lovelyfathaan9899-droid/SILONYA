@@ -32,8 +32,12 @@ type OrderStatus =
   | "pending_payment"
   | "payment_failed"
   | "paid"
+  | "pending_confirmation"
+  | "confirmed"
   | "processing"
+  | "packed"
   | "shipped"
+  | "out_for_delivery"
   | "delivered"
   | "cancelled"
   | "returned"
@@ -46,9 +50,13 @@ type OrderStatus =
 const VALID_TRANSITIONS: Record<OrderStatus, OrderStatus[]> = {
   pending_payment: ["paid", "payment_failed", "cancelled"],
   payment_failed: ["pending_payment", "cancelled"],
-  paid: ["processing", "cancelled"],
-  processing: ["shipped", "cancelled"],
-  shipped: ["delivered", "returned"],
+  paid: ["confirmed", "processing", "cancelled"],
+  pending_confirmation: ["confirmed", "cancelled"],
+  confirmed: ["packed", "processing", "cancelled"],
+  processing: ["packed", "shipped", "cancelled"],
+  packed: ["shipped", "cancelled"],
+  shipped: ["out_for_delivery", "delivered", "returned"],
+  out_for_delivery: ["delivered", "returned"],
   delivered: ["returned"],
   cancelled: [],
   returned: ["refunded"],
@@ -61,8 +69,12 @@ const STATUS_BADGE_VARIANT: Record<string, "default" | "outline" | "accent" | "s
     pending_payment: "outline",
     payment_failed: "error",
     paid: "accent",
+    pending_confirmation: "outline",
+    confirmed: "accent",
     processing: "outline",
+    packed: "accent",
     shipped: "accent",
+    out_for_delivery: "accent",
     delivered: "success",
     cancelled: "default",
     returned: "outline",
@@ -335,18 +347,158 @@ function AddNoteForm({ orderId }: { orderId: string }) {
   );
 }
 
+const WHATSAPP_STATUS_BADGE_VARIANT: Record<
+  string,
+  "default" | "outline" | "accent" | "success" | "error"
+> = {
+  queued: "outline",
+  sending: "outline",
+  sent: "accent",
+  delivered: "accent",
+  read: "success",
+  failed: "error",
+};
+
+const WHATSAPP_EVENT_LABEL: Record<string, string> = {
+  sent: "Sent",
+  delivered: "Delivered",
+  read: "Read",
+  failed: "Failed",
+  button_confirm: "Customer confirmed",
+  button_cancel: "Customer cancelled",
+  button_help: "Customer tapped Help",
+  inbound_message: "Inbound message",
+};
+
+/** ADMIN PANEL / ORDER DETAILS PAGE spec — "View WhatsApp History," per-message status (Delivered/Read/Confirmed/Failed), Retry, and the WhatsApp Timeline (sent/delivered/read/customer-confirmed/cancelled/webhook events). Replaces the old "Resend Confirmation Email" button with "Send WhatsApp." */
+function WhatsAppPanel({ orderId }: { orderId: string }) {
+  const utils = trpc.useUtils();
+  const history = trpc.adminOrders.getWhatsAppHistory.useQuery({ orderId });
+
+  const sendWhatsApp = trpc.adminOrders.sendWhatsApp.useMutation({
+    onSuccess: async () => {
+      toast({ title: "WhatsApp message sent" });
+      await utils.adminOrders.getWhatsAppHistory.invalidate({ orderId });
+    },
+    onError: (error) => {
+      toast({
+        title: "Couldn't send WhatsApp message",
+        description: error.message,
+        variant: "error",
+      });
+    },
+  });
+
+  const resendMessage = trpc.adminOrders.resendWhatsAppMessage.useMutation({
+    onSuccess: async (result) => {
+      toast({
+        title: result.success ? "Message resent" : "Resend failed — will retry automatically",
+      });
+      await utils.adminOrders.getWhatsAppHistory.invalidate({ orderId });
+    },
+    onError: (error) => {
+      toast({ title: "Couldn't resend message", description: error.message, variant: "error" });
+    },
+  });
+
+  const messages = history.data?.messages ?? [];
+  const events = history.data?.events ?? [];
+  const lastSent = messages.find((m) => m.sentAt)?.sentAt ?? null;
+  const lastRead = messages.find((m) => m.readAt)?.readAt ?? null;
+  const lastConfirmed = events.find((e) => e.type === "button_confirm")?.createdAt ?? null;
+
+  return (
+    <div className="border-mist border p-4">
+      <div className="mb-3 flex items-center justify-between">
+        <h2 className="font-display text-ink text-lg">WhatsApp</h2>
+        <Button
+          variant="secondary"
+          size="sm"
+          disabled={sendWhatsApp.isPending}
+          onClick={() => {
+            sendWhatsApp.mutate({ orderId });
+          }}
+        >
+          {sendWhatsApp.isPending ? "Sending…" : "Send WhatsApp"}
+        </Button>
+      </div>
+
+      <div className="text-stone mb-4 grid grid-cols-3 gap-2 font-sans text-xs">
+        <div>
+          <p className="uppercase tracking-wide">Last Sent</p>
+          <p className="text-ink mt-0.5">{lastSent ? new Date(lastSent).toLocaleString() : "—"}</p>
+        </div>
+        <div>
+          <p className="uppercase tracking-wide">Last Read</p>
+          <p className="text-ink mt-0.5">{lastRead ? new Date(lastRead).toLocaleString() : "—"}</p>
+        </div>
+        <div>
+          <p className="uppercase tracking-wide">Last Confirmed</p>
+          <p className="text-ink mt-0.5">
+            {lastConfirmed ? new Date(lastConfirmed).toLocaleString() : "—"}
+          </p>
+        </div>
+      </div>
+
+      {history.isLoading ? (
+        <p className="text-stone font-sans text-sm">Loading…</p>
+      ) : messages.length === 0 ? (
+        <p className="text-stone font-sans text-sm">
+          No WhatsApp messages sent for this order yet.
+        </p>
+      ) : (
+        <ul className="flex flex-col gap-3">
+          {messages.map((message) => (
+            <li key={message.id} className="border-mist border-t pt-3 first:border-t-0 first:pt-0">
+              <div className="flex items-center justify-between gap-2">
+                <div className="flex items-center gap-2">
+                  <Badge variant={WHATSAPP_STATUS_BADGE_VARIANT[message.status] ?? "default"}>
+                    {statusLabel(message.status)}
+                  </Badge>
+                  <span className="text-ink font-sans text-sm">{statusLabel(message.type)}</span>
+                </div>
+                {message.status === "failed" ? (
+                  <Button
+                    variant="secondary"
+                    size="sm"
+                    disabled={resendMessage.isPending}
+                    onClick={() => {
+                      resendMessage.mutate({ messageId: message.id });
+                    }}
+                  >
+                    Retry
+                  </Button>
+                ) : null}
+              </div>
+              <p className="text-stone mt-1 font-sans text-xs">
+                To {message.toPhone} · {message.attempts} attempt{message.attempts === 1 ? "" : "s"}
+                {message.errorMessage ? ` · ${message.errorMessage}` : ""}
+              </p>
+            </li>
+          ))}
+        </ul>
+      )}
+
+      {events.length > 0 ? (
+        <div className="border-mist mt-4 border-t pt-3">
+          <p className="text-stone mb-2 font-sans text-xs uppercase tracking-wide">Timeline</p>
+          <ul className="flex flex-col gap-2">
+            {events.map((event) => (
+              <li key={event.id} className="text-ink font-sans text-xs">
+                {WHATSAPP_EVENT_LABEL[event.type] ?? event.type} ·{" "}
+                {new Date(event.createdAt).toLocaleString()}
+              </li>
+            ))}
+          </ul>
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
 export function OrderDetail({ orderId }: { orderId: string }) {
   const utils = trpc.useUtils();
   const query = trpc.adminOrders.getById.useQuery({ id: orderId });
-
-  const resendEmail = trpc.adminOrders.resendConfirmationEmail.useMutation({
-    onSuccess: () => {
-      toast({ title: "Confirmation email sent" });
-    },
-    onError: (error) => {
-      toast({ title: "Couldn't send email", description: error.message, variant: "error" });
-    },
-  });
 
   if (query.isLoading) {
     return (
@@ -397,15 +549,6 @@ export function OrderDetail({ orderId }: { orderId: string }) {
               <span className="text-stone font-sans text-sm">{order.guestEmail}</span>
             </div>
           </div>
-          <Button
-            variant="secondary"
-            disabled={resendEmail.isPending}
-            onClick={() => {
-              resendEmail.mutate({ orderId });
-            }}
-          >
-            {resendEmail.isPending ? "Sending…" : "Resend confirmation email"}
-          </Button>
         </div>
 
         <div className="grid grid-cols-1 gap-8 lg:grid-cols-3">
@@ -546,6 +689,8 @@ export function OrderDetail({ orderId }: { orderId: string }) {
                 {order.shippingAddress.countryCode}
               </p>
             </div>
+
+            <WhatsAppPanel orderId={orderId} />
           </div>
         </div>
       </Container>

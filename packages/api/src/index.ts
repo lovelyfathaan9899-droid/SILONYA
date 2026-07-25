@@ -24,3 +24,22 @@ export {
   type ReportPeriod,
   type ReportSummary,
 } from "./services/reports";
+export {
+  cancelOrderViaWhatsApp,
+  confirmOrderViaWhatsApp,
+} from "./services/whatsapp/confirm-cancel";
+export {
+  sendDeliveredWhatsApp,
+  sendOrderConfirmationWhatsApp,
+  sendOrderStatusWhatsApp,
+  sendShippedWhatsApp,
+} from "./services/whatsapp/order-notifications";
+export { processWhatsAppWebhookPayload } from "./services/whatsapp/webhook-handler";
+export { processWhatsAppRetryQueue } from "./services/whatsapp/retry-queue";
+export {
+  businessWhatsAppPhone,
+  createDashboardNotification,
+  emailAllAdmins,
+  whatsAppBusinessAlert,
+} from "./services/notifications/notification-service";
+export { notifyNewOrder } from "./services/notifications/order-events";

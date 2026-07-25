@@ -19,8 +19,12 @@ interface PageProps {
 const STATUS_LABEL: Record<string, string> = {
   pending_payment: "Finalizing your order…",
   paid: "Confirmed",
+  pending_confirmation: "Awaiting confirmation on WhatsApp",
+  confirmed: "Confirmed",
   processing: "Being prepared",
+  packed: "Packed",
   shipped: "Shipped",
+  out_for_delivery: "Out for delivery",
   delivered: "Delivered",
   payment_failed: "Payment failed",
   cancelled: "Cancelled",
@@ -59,6 +63,12 @@ export default async function OrderConfirmationPage({ searchParams }: PageProps)
         {isPending ? (
           <p className="text-stone font-sans text-sm">
             We&apos;re confirming your payment — this page will update automatically.
+          </p>
+        ) : null}
+        {order.status === "pending_confirmation" ? (
+          <p className="text-stone font-sans text-sm">
+            We&apos;ve sent an order confirmation to your WhatsApp — tap Confirm there to move your
+            order forward.
           </p>
         ) : null}
       </div>

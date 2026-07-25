@@ -4,7 +4,20 @@ import { requirePermission, router } from "../trpc";
 
 const analyticsRead = requirePermission("analytics:read");
 
-const PAID_STATUSES = ["paid", "processing", "shipped", "delivered"] as const;
+// WHATSAPP_ARCHITECTURE.md's confirmation gate: new COD orders start at
+// "pending_confirmation" and move to "confirmed" only once the customer
+// taps Confirm — deliberately excluded here, since an order the customer
+// hasn't confirmed yet isn't a confirmed sale. "processing" is kept for
+// orders that reached it before that gate existed.
+const PAID_STATUSES = [
+  "paid",
+  "confirmed",
+  "processing",
+  "packed",
+  "shipped",
+  "out_for_delivery",
+  "delivered",
+] as const;
 const LOW_STOCK_THRESHOLD = 5;
 
 /**

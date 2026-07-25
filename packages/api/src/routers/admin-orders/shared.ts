@@ -1,13 +1,27 @@
 import type { OrderStatus } from "@silonya/database";
 import { getStripeClient } from "../../lib/stripe";
 
-/** ORDER_MANAGEMENT.md §2 — the only permitted status transitions; every write is checked against this graph, never assumed valid. */
+/**
+ * ORDER_MANAGEMENT.md §2 — the only permitted status transitions; every
+ * write is checked against this graph, never assumed valid.
+ *
+ * WHATSAPP_ARCHITECTURE.md's confirmation gate added pending_confirmation/
+ * confirmed/packed/out_for_delivery — every non-zero-total COD order now
+ * starts at pending_confirmation instead of jumping straight to
+ * "processing" (checkout/index.ts). "processing" itself is kept reachable
+ * from "paid" purely for orders that already reached it before this state
+ * existed; no new order is ever created into it.
+ */
 export const VALID_TRANSITIONS: Record<OrderStatus, OrderStatus[]> = {
   pending_payment: ["paid", "payment_failed", "cancelled"],
   payment_failed: ["pending_payment", "cancelled"],
-  paid: ["processing", "cancelled"],
-  processing: ["shipped", "cancelled"],
-  shipped: ["delivered", "returned"],
+  paid: ["confirmed", "processing", "cancelled"],
+  pending_confirmation: ["confirmed", "cancelled"],
+  confirmed: ["packed", "processing", "cancelled"],
+  processing: ["packed", "shipped", "cancelled"],
+  packed: ["shipped", "cancelled"],
+  shipped: ["out_for_delivery", "delivered", "returned"],
+  out_for_delivery: ["delivered", "returned"],
   delivered: ["returned"],
   cancelled: [],
   returned: ["refunded"],

@@ -19,6 +19,7 @@
     "@silonya/database": "workspace:*",
     "@silonya/emails": "workspace:*",
     "@silonya/utils": "workspace:*",
+    "@silonya/whatsapp": "workspace:*",
     "@trpc/server": "^11.0.0",
     "cloudinary": "^2.5.1",
     "exceljs": "^4.4.0",

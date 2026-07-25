@@ -1,0 +1,26 @@
+{
+  "name": "@silonya/whatsapp",
+  "version": "0.0.0",
+  "private": true,
+  "description": "WhatsApp Business Cloud API client, template payload builders, and interactive-message construction (WHATSAPP_ARCHITECTURE.md)",
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "lint": "eslint . --max-warnings 0",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "clean": "rm -rf .turbo node_modules"
+  },
+  "dependencies": {
+    "@silonya/utils": "workspace:*"
+  },
+  "devDependencies": {
+    "@silonya/config": "workspace:*",
+    "@types/node": "^22.10.0",
+    "eslint": "^9.17.0",
+    "typescript": "^5.7.0",
+    "vitest": "^3.2.7"
+  }
+}

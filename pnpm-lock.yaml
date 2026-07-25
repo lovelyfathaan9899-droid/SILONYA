@@ -154,6 +154,9 @@ importers:
       '@silonya/utils':
         specifier: workspace:*
         version: link:../../packages/utils
+      '@silonya/whatsapp':
+        specifier: workspace:*
+        version: link:../../packages/whatsapp
       '@trpc/client':
         specifier: ^11.0.0
         version: 11.18.0(@trpc/server@11.18.0(typescript@5.9.3))(typescript@5.9.3)
@@ -231,6 +234,9 @@ importers:
       '@silonya/utils':
         specifier: workspace:*
         version: link:../utils
+      '@silonya/whatsapp':
+        specifier: workspace:*
+        version: link:../whatsapp
       '@trpc/server':
         specifier: ^11.0.0
         version: 11.18.0(typescript@5.9.3)
@@ -501,6 +507,28 @@ importers:
       '@silonya/config':
         specifier: workspace:*
         version: link:../config
+      eslint:
+        specifier: ^9.17.0
+        version: 9.39.5(jiti@2.7.0)
+      typescript:
+        specifier: ^5.7.0
+        version: 5.9.3
+      vitest:
+        specifier: ^3.2.7
+        version: 3.2.7(@types/node@22.20.1)(jiti@2.7.0)(lightningcss@1.32.0)(tsx@4.23.0)(yaml@2.9.0)
+
+  packages/whatsapp:
+    dependencies:
+      '@silonya/utils':
+        specifier: workspace:*
+        version: link:../utils
+    devDependencies:
+      '@silonya/config':
+        specifier: workspace:*
+        version: link:../config
+      '@types/node':
+        specifier: ^22.10.0
+        version: 22.20.1
       eslint:
         specifier: ^9.17.0
         version: 9.39.5(jiti@2.7.0)

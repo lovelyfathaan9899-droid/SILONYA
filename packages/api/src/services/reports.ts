@@ -4,7 +4,18 @@ import ExcelJS from "exceljs";
 
 export type ReportPeriod = "daily" | "weekly" | "monthly";
 
-const PAID_STATUSES = ["paid", "processing", "shipped", "delivered"] as const;
+// Kept in sync with admin-analytics.ts's PAID_STATUSES (WHATSAPP_ARCHITECTURE.md)
+// — "pending_confirmation" is deliberately excluded, an unconfirmed order
+// isn't a confirmed sale yet.
+const PAID_STATUSES = [
+  "paid",
+  "confirmed",
+  "processing",
+  "packed",
+  "shipped",
+  "out_for_delivery",
+  "delivered",
+] as const;
 
 export interface ReportSummary {
   period: ReportPeriod;

@@ -90,8 +90,15 @@ export async function createPendingOrder(overrides: {
   variantId: string;
   quantity?: number;
   unitPrice?: number;
-  status?: "pending_payment" | "paid" | "cancelled" | "payment_failed";
+  status?:
+    | "pending_payment"
+    | "paid"
+    | "cancelled"
+    | "payment_failed"
+    | "pending_confirmation"
+    | "confirmed";
   createdAt?: Date;
+  phone?: string;
 }) {
   const suffix = crypto.randomUUID().slice(0, 8);
   const address = await prisma.address.create({
@@ -101,6 +108,7 @@ export async function createPendingOrder(overrides: {
       region: "CA",
       postalCode: "94105",
       countryCode: "US",
+      phone: overrides.phone ?? "+15555550100",
     },
   });
 

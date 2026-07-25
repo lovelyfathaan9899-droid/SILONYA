@@ -10,6 +10,8 @@ import { checkRateLimit } from "../../lib/rate-limit";
 import { siteUrl } from "../../lib/site-url";
 import { toOrderEmailData } from "../../lib/order-email-mapper";
 import { finalizeReservation, reserveInventory } from "../../services/inventory";
+import { notifyNewOrder } from "../../services/notifications/order-events";
+import { sendOrderConfirmationWhatsApp } from "../../services/whatsapp/order-notifications";
 import { findRedeemableGiftCard } from "../gift-cards";
 import {
   assertDiscountStillRedeemable,
@@ -222,9 +224,13 @@ export const checkoutRouter = router({
             // the order is created directly in its settled state rather
             // than passing through pending_payment at all. "paid" only when
             // discount/gift card cover the whole order (nothing left to
-            // collect on delivery); otherwise "processing" — confirmed and
-            // being prepared, cash due on delivery.
-            const initialStatus = grandTotal === 0 ? "paid" : "processing";
+            // collect on delivery — there's no COD balance to confirm, so
+            // the WhatsApp confirmation gate doesn't apply); otherwise
+            // "pending_confirmation" — the WhatsApp order-confirmation
+            // message (sent below, after the transaction commits) is what
+            // moves it to "confirmed" once the customer taps Confirm
+            // (WHATSAPP_ARCHITECTURE.md).
+            const initialStatus = grandTotal === 0 ? "paid" : "pending_confirmation";
 
             const createdOrder = await tx.order.create({
               data: {
@@ -314,7 +320,7 @@ export const checkoutRouter = router({
                 note:
                   initialStatus === "paid"
                     ? "Fully covered by discount/gift card — no payment required."
-                    : "Cash on Delivery — order confirmed, payment due on delivery.",
+                    : "Order placed — awaiting confirmation via WhatsApp.",
               },
             });
 
@@ -330,19 +336,38 @@ export const checkoutRouter = router({
       });
       const confirmationUrl = `${siteUrl()}/order/confirmation?token=${accessToken}`;
 
-      // Order is already fully settled (paid or processing-with-COD-due)
-      // from the transaction above — no payment gateway round-trip to wait
-      // on, so the customer goes straight to the confirmation page.
+      // Order is already fully settled (paid, or pending_confirmation with
+      // cash due on delivery) from the transaction above — no payment
+      // gateway round-trip to wait on, so the customer goes straight to the
+      // confirmation page.
       const orderWithDetails = await prisma.order.findUniqueOrThrow({
         where: { id: order.id },
         include: { items: true, shippingAddress: true, billingAddress: true },
       });
+
+      // WhatsApp is the primary confirmation channel (WHATSAPP_ARCHITECTURE.md
+      // — its Confirm/Cancel buttons are what actually drive the order out
+      // of pending_confirmation); email is sent alongside it as a
+      // best-effort courtesy copy, same as before. Neither blocks the
+      // response — a failed send here shouldn't fail an otherwise-successful
+      // checkout.
       const emailData = toOrderEmailData(orderWithDetails, confirmationUrl);
       if (emailData) {
         await sendOrderConfirmationEmail(emailData).catch((err: unknown) => {
           console.error("[checkout] failed to send order confirmation email:", err);
         });
       }
+      await sendOrderConfirmationWhatsApp(orderWithDetails).catch((err: unknown) => {
+        console.error("[checkout] failed to send order confirmation WhatsApp message:", err);
+      });
+      await notifyNewOrder({
+        ...orderWithDetails,
+        customerName: orderWithDetails.shippingAddress.fullName ?? "Customer",
+        customerPhone: orderWithDetails.shippingAddress.phone ?? "",
+      }).catch((err: unknown) => {
+        console.error("[checkout] failed to fan out new-order admin notifications:", err);
+      });
+
       return { checkoutUrl: confirmationUrl, orderId: order.id };
     }),
 
