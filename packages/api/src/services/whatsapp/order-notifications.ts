@@ -34,6 +34,11 @@ async function orderTrackingUrl(orderId: string, guestEmail: string | null): Pro
   return `${siteUrl()}/order/confirmation?token=${token}`;
 }
 
+/** WhatsApp sends target the customer's dedicated WhatsApp number when they gave one at checkout, falling back to their regular contact number otherwise — most customers use the same line for both. */
+function whatsAppTargetPhone(address: Address): string | null {
+  return address.whatsappPhone ?? address.phone;
+}
+
 /** Support number for the Help button's wa.me deep link — falls back to the business's own sending number when a distinct support line isn't configured. */
 function supportPhone(): string {
   const configured = process.env.WHATSAPP_SUPPORT_PHONE ?? process.env.WHATSAPP_BUSINESS_PHONE;
@@ -52,7 +57,8 @@ function supportPhone(): string {
 export async function sendOrderConfirmationWhatsApp(
   order: OrderWithItemsAndAddress,
 ): Promise<void> {
-  if (!order.shippingAddress.phone) return;
+  const customerPhone = whatsAppTargetPhone(order.shippingAddress);
+  if (!customerPhone) return;
 
   const trackingUrl = await orderTrackingUrl(order.id, order.guestEmail);
   const estimatedDeliveryDate = estimateDeliveryDate(order.shippingMethod, order.createdAt);
@@ -63,7 +69,7 @@ export async function sendOrderConfirmationWhatsApp(
       orderNumber: order.orderNumber,
       orderDate: order.createdAt,
       customerName: order.shippingAddress.fullName ?? "Customer",
-      customerPhone: order.shippingAddress.phone,
+      customerPhone,
       items: order.items.map((item) => ({
         name: item.productNameSnapshot,
         variantLabel: item.variantLabelSnapshot || null,
@@ -116,7 +122,8 @@ export async function sendOrderStatusWhatsApp(
   status: string,
   cancellationReason?: string,
 ): Promise<void> {
-  if (!order.shippingAddress.phone) return;
+  const customerPhone = whatsAppTargetPhone(order.shippingAddress);
+  if (!customerPhone) return;
   if (!NOTIFIABLE_STATUSES.has(status as WhatsAppStatus)) return;
 
   const trackingUrl = await orderTrackingUrl(order.id, order.guestEmail);
@@ -124,7 +131,7 @@ export async function sendOrderStatusWhatsApp(
     orderId: order.id,
     orderNumber: order.orderNumber,
     customerName: order.shippingAddress.fullName ?? "Customer",
-    customerPhone: order.shippingAddress.phone,
+    customerPhone,
     status: status as WhatsAppStatus,
     orderTrackingUrl: trackingUrl,
     ...(cancellationReason ? { cancellationReason } : {}),
@@ -138,14 +145,15 @@ export async function sendShippedWhatsApp(
   order: OrderWithItemsAndAddress,
   input: { trackingNumber: string; carrier: string; trackingUrl: string | null },
 ): Promise<void> {
-  if (!order.shippingAddress.phone) return;
+  const customerPhone = whatsAppTargetPhone(order.shippingAddress);
+  if (!customerPhone) return;
 
   const estimatedDeliveryDate = estimateDeliveryDate(order.shippingMethod, new Date());
   const message = buildShippedMessage({
     orderId: order.id,
     orderNumber: order.orderNumber,
     customerName: order.shippingAddress.fullName ?? "Customer",
-    customerPhone: order.shippingAddress.phone,
+    customerPhone,
     trackingNumber: input.trackingNumber,
     carrier: input.carrier,
     trackingUrl: input.trackingUrl,
@@ -157,7 +165,8 @@ export async function sendShippedWhatsApp(
 
 /** DELIVERED spec — thank-you + review request, linking to the first item's product page. */
 export async function sendDeliveredWhatsApp(order: OrderWithItemsAndAddress): Promise<void> {
-  if (!order.shippingAddress.phone) return;
+  const customerPhone = whatsAppTargetPhone(order.shippingAddress);
+  if (!customerPhone) return;
 
   const firstItem = order.items[0];
   const product = firstItem
@@ -174,7 +183,7 @@ export async function sendDeliveredWhatsApp(order: OrderWithItemsAndAddress): Pr
     orderId: order.id,
     orderNumber: order.orderNumber,
     customerName: order.shippingAddress.fullName ?? "Customer",
-    customerPhone: order.shippingAddress.phone,
+    customerPhone,
     reviewUrl,
   });
 

@@ -423,7 +423,7 @@ export const adminOrdersRouter = {
       if (!order) {
         throw new TRPCError({ code: "NOT_FOUND", message: "Order not found." });
       }
-      if (!order.shippingAddress.phone) {
+      if (!order.shippingAddress.whatsappPhone && !order.shippingAddress.phone) {
         throw new TRPCError({
           code: "BAD_REQUEST",
           message: "This order has no phone number on file.",

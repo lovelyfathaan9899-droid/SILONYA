@@ -5,7 +5,7 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 import { trpc } from "@/lib/trpc";
 
-type BlockType = "hero" | "promo_banner" | "editorial";
+type BlockType = "hero" | "promo_banner" | "editorial" | "announcement_bar";
 
 interface BlockForm {
   eyebrow: string;
@@ -35,7 +35,11 @@ const BLOCK_LABELS: Record<BlockType, string> = {
   hero: "Homepage hero",
   promo_banner: "Promo banner",
   editorial: "Editorial section",
+  announcement_bar: "Announcement bar",
 };
+
+/** Message-only blocks — no eyebrow/heading/image/CTA fields, just a Textarea "message". */
+const MESSAGE_ONLY_TYPES: BlockType[] = ["promo_banner", "announcement_bar"];
 
 function BlockEditor({ type }: { type: BlockType }) {
   const utils = trpc.useUtils();
@@ -112,7 +116,7 @@ function BlockEditor({ type }: { type: BlockType }) {
         </div>
       </div>
 
-      {type !== "promo_banner" ? (
+      {!MESSAGE_ONLY_TYPES.includes(type) ? (
         <>
           <Label>Eyebrow</Label>
           <Input {...field("eyebrow")} />
@@ -127,10 +131,10 @@ function BlockEditor({ type }: { type: BlockType }) {
         </>
       ) : null}
 
-      <Label>{type === "promo_banner" ? "Message" : "Body"}</Label>
-      <Textarea {...field("body")} rows={type === "promo_banner" ? 2 : 4} />
+      <Label>{MESSAGE_ONLY_TYPES.includes(type) ? "Message" : "Body"}</Label>
+      <Textarea {...field("body")} rows={MESSAGE_ONLY_TYPES.includes(type) ? 2 : 4} />
 
-      {type !== "promo_banner" ? (
+      {!MESSAGE_ONLY_TYPES.includes(type) ? (
         <>
           <Label>CTA label</Label>
           <Input {...field("ctaLabel")} />
@@ -166,6 +170,7 @@ export default function ContentPage() {
         </div>
 
         <div className="flex flex-col gap-6">
+          <BlockEditor type="announcement_bar" />
           <BlockEditor type="hero" />
           <BlockEditor type="promo_banner" />
           <BlockEditor type="editorial" />

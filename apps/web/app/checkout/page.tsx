@@ -15,7 +15,12 @@ import {
   SelectValue,
   Textarea,
 } from "@silonya/ui";
-import { calculateShipping, formatPriceForDisplay, type ShippingMethod } from "@silonya/utils";
+import {
+  calculateShipping,
+  DEFAULT_SHIPPING_RATES,
+  formatPriceForDisplay,
+  type ShippingMethod,
+} from "@silonya/utils";
 import Link from "next/link";
 import { useEffect, useState, type ChangeEvent, type SyntheticEvent } from "react";
 import { COUNTRIES, DEFAULT_COUNTRY_CODE, DIAL_CODES, PAKISTAN_PROVINCES } from "@/lib/countries";
@@ -32,6 +37,7 @@ interface AddressForm {
   countryCode: string;
   phoneDialCode: string;
   phoneNumber: string;
+  whatsappPhone: string;
 }
 
 const defaultCountry = COUNTRIES.find((c) => c.code === DEFAULT_COUNTRY_CODE) ?? COUNTRIES[0];
@@ -46,6 +52,7 @@ const emptyAddress: AddressForm = {
   countryCode: DEFAULT_COUNTRY_CODE,
   phoneDialCode: defaultCountry?.dialCode ?? "+92",
   phoneNumber: "",
+  whatsappPhone: "",
 };
 
 function toAddressInput(form: AddressForm) {
@@ -58,6 +65,7 @@ function toAddressInput(form: AddressForm) {
     postalCode: form.postalCode.trim() || undefined,
     countryCode: form.countryCode.trim().toUpperCase(),
     phone: `${form.phoneDialCode} ${form.phoneNumber.trim()}`.trim(),
+    whatsappPhone: form.whatsappPhone.trim() || undefined,
   };
 }
 
@@ -84,10 +92,21 @@ export default function CheckoutPage() {
   const [giftCardBalance, setGiftCardBalance] = useState<number | null>(null);
   const [giftCardError, setGiftCardError] = useState<string | null>(null);
   const [checkingGiftCard, setCheckingGiftCard] = useState(false);
+  const [shippingRates, setShippingRates] = useState(DEFAULT_SHIPPING_RATES);
+
+  useEffect(() => {
+    trpcClient.checkout.getShippingRates
+      .query()
+      .then(setShippingRates)
+      .catch(() => {
+        // Falls back to DEFAULT_SHIPPING_RATES — createIntent still
+        // recalculates authoritatively server-side regardless.
+      });
+  }, []);
 
   const currency = lines[0]?.currency ?? "PKR";
   const subtotal = lines.reduce((sum, line) => sum + line.unitPrice * line.quantity, 0);
-  const estimatedShipping = calculateShipping(subtotal, shippingMethod, false);
+  const estimatedShipping = calculateShipping(subtotal, shippingMethod, false, shippingRates);
   const totalBeforeGiftCard = Math.max(0, subtotal + estimatedShipping - discountAmount);
   const giftCardApplied =
     giftCardBalance !== null ? Math.min(giftCardBalance, totalBeforeGiftCard) : 0;
@@ -224,7 +243,7 @@ export default function CheckoutPage() {
             <h2 className="font-display text-ink text-xl">Delivery method</h2>
             <div className="flex flex-col gap-3 sm:flex-row">
               {SHIPPING_OPTIONS.map((option) => {
-                const price = calculateShipping(subtotal, option.value, false);
+                const price = calculateShipping(subtotal, option.value, false, shippingRates);
                 return (
                   <label
                     key={option.value}
@@ -488,6 +507,20 @@ function AddressFields({
             className="mt-1"
           />
         </div>
+      </div>
+
+      <div>
+        <Label htmlFor={`${idPrefix}-whatsappPhone`}>WhatsApp number (optional)</Label>
+        <Input
+          id={`${idPrefix}-whatsappPhone`}
+          type="tel"
+          value={value.whatsappPhone}
+          onChange={(event) => {
+            onChange({ ...value, whatsappPhone: event.target.value });
+          }}
+          placeholder="Leave blank to use your mobile number above"
+          className="mt-1"
+        />
       </div>
 
       <div>

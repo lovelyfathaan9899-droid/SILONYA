@@ -4,4 +4,5 @@ export { Hero, type HeroProps } from "./Hero";
 export { CollectionCard, type CollectionCardProps } from "./CollectionCard";
 export { ProductGrid, type ProductGridProps, type ProductGridItem } from "./ProductGrid";
 export { PromoBanner, type PromoBannerProps } from "./PromoBanner";
+export { AnnouncementBar, type AnnouncementBarProps } from "./AnnouncementBar";
 export { EditorialSection, type EditorialSectionProps } from "./EditorialSection";

@@ -1,11 +1,11 @@
 "use client";
 
 import { Button, EmptyState, Icon, Input, PriceDisplay, Section, toast } from "@silonya/ui";
-import { calculateShipping, formatPriceForDisplay } from "@silonya/utils";
+import { calculateShipping, DEFAULT_SHIPPING_RATES, formatPriceForDisplay } from "@silonya/utils";
 import { Minus, Plus, X } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useCartStore } from "@/lib/stores/cartStore";
 import { useIsLoggedIn } from "@/lib/customer-session-client";
 import { trpcClient } from "@/lib/trpc-client";
@@ -35,6 +35,17 @@ export default function CartPage() {
   } | null>(null);
   const [discountError, setDiscountError] = useState<string | null>(null);
   const [checkingDiscount, setCheckingDiscount] = useState(false);
+  const [shippingRates, setShippingRates] = useState(DEFAULT_SHIPPING_RATES);
+
+  useEffect(() => {
+    trpcClient.checkout.getShippingRates
+      .query()
+      .then(setShippingRates)
+      .catch(() => {
+        // Falls back to DEFAULT_SHIPPING_RATES — a stale-but-reasonable
+        // estimate is better than a broken cart page if this query fails.
+      });
+  }, []);
 
   const currency = lines[0]?.currency ?? "PKR";
   const subtotal = lines.reduce((sum, line) => sum + line.unitPrice * line.quantity, 0);
@@ -42,6 +53,7 @@ export default function CartPage() {
     subtotal,
     "standard",
     discountPreview?.freeShipping ?? false,
+    shippingRates,
   );
   const estimatedTotal = Math.max(0, subtotal + estimatedShipping - (discountPreview?.amount ?? 0));
 

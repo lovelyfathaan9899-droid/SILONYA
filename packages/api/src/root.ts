@@ -10,6 +10,7 @@ import { adminNotificationsRouter } from "./routers/admin-notifications";
 import { adminOrdersRouter } from "./routers/admin-orders";
 import { adminReviewsRouter } from "./routers/admin-reviews";
 import { adminSearchRouter } from "./routers/admin-search";
+import { adminSettingsRouter } from "./routers/admin-settings";
 import { catalogRouter } from "./routers/catalog";
 import { checkoutRouter } from "./routers/checkout";
 import { cmsRouter } from "./routers/cms";
@@ -33,6 +34,7 @@ export const appRouter = router({
   adminCms: adminCmsRouter,
   adminAnalytics: adminAnalyticsRouter,
   adminNotifications: adminNotificationsRouter,
+  adminSettings: adminSettingsRouter,
   catalog: catalogRouter,
   checkout: checkoutRouter,
   customerAuth: customerAuthRouter,

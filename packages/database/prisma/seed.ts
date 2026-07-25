@@ -31,6 +31,8 @@ const PERMISSIONS = [
   "content:read",
   "content:write",
   "analytics:read",
+  "settings:read",
+  "settings:write",
 ] as const;
 
 const ROLE_PERMISSIONS: Record<string, readonly string[]> = {
@@ -64,6 +66,7 @@ const ROLE_PERMISSIONS: Record<string, readonly string[]> = {
     "gift_cards:read",
     "content:read",
     "analytics:read",
+    "settings:read",
   ],
 };
 

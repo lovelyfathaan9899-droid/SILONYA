@@ -22,23 +22,41 @@ export function generateOrderNumber(): string {
  */
 export type ShippingMethod = "standard" | "express";
 
-const SHIPPING_RATES_MINOR_UNITS: Record<ShippingMethod, number> = {
+export interface ShippingRates {
+  standard: number;
+  express: number;
+  freeStandardThreshold: number;
+}
+
+/**
+ * Fallback used when the caller doesn't supply live rates (most unit tests,
+ * and any call site that hasn't been wired to the admin-configurable
+ * settings yet) — kept in sync with StoreSettings' own column defaults
+ * (packages/database/prisma/schema.prisma) so the two never silently drift
+ * apart, but this constant is no longer the source of truth for a real
+ * checkout: packages/api's checkout router reads the live StoreSettings
+ * row and passes it in explicitly (ADMIN_PANEL.md — "shipping configurable
+ * from admin").
+ */
+export const DEFAULT_SHIPPING_RATES: ShippingRates = {
   standard: 25000, // PKR 250
   express: 50000, // PKR 500
+  freeStandardThreshold: 500000, // PKR 5,000
 };
-const FREE_STANDARD_SHIPPING_THRESHOLD_MINOR_UNITS = 500000; // PKR 5,000
+
 const FLAT_TAX_RATE_BY_COUNTRY: Record<string, number> = {};
 
 export function calculateShipping(
   subtotal: number,
   method: ShippingMethod,
   freeShippingOverride: boolean,
+  rates: ShippingRates = DEFAULT_SHIPPING_RATES,
 ): number {
   if (freeShippingOverride) return 0;
-  if (method === "standard" && subtotal >= FREE_STANDARD_SHIPPING_THRESHOLD_MINOR_UNITS) {
+  if (method === "standard" && subtotal >= rates.freeStandardThreshold) {
     return 0;
   }
-  return SHIPPING_RATES_MINOR_UNITS[method];
+  return rates[method];
 }
 
 export function calculateTax(taxableAmount: number, countryCode: string): number {

@@ -9,6 +9,7 @@ import {
   LayoutGrid,
   Menu,
   Search,
+  Settings,
   ShoppingBag,
   Shirt,
   Star,
@@ -34,6 +35,7 @@ const NAV_ITEMS = [
   { label: "Gift cards", href: "/gift-cards", icon: Gift },
   { label: "Content", href: "/content", icon: FileText },
   { label: "Search", href: "/search-analytics", icon: Search },
+  { label: "Shipping", href: "/settings/shipping", icon: Settings },
 ] as const;
 
 export interface AdminShellProps {

@@ -49,7 +49,11 @@ const organizationJsonLd = {
 
 export default async function RootLayout({ children }: { children: ReactNode }) {
   const ctx = await getCustomerContext();
-  const footerSections = await createServerCaller().cms.footer();
+  const caller = createServerCaller();
+  const [footerSections, announcementBar] = await Promise.all([
+    caller.cms.footer(),
+    caller.cms.announcementBar(),
+  ]);
 
   return (
     <html lang="en" suppressHydrationWarning>
@@ -61,7 +65,11 @@ export default async function RootLayout({ children }: { children: ReactNode }) 
         />
       </head>
       <body className="bg-bone text-ink flex min-h-screen flex-col">
-        <AppShell loggedIn={!!ctx.customerSession} footerSections={footerSections}>
+        <AppShell
+          loggedIn={!!ctx.customerSession}
+          footerSections={footerSections}
+          announcementBar={announcementBar}
+        >
           {children}
         </AppShell>
       </body>

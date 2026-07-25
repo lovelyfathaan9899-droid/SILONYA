@@ -13,6 +13,7 @@ interface AddressFormInput {
   postalCode?: string | undefined;
   countryCode: string;
   phone: string;
+  whatsappPhone?: string | undefined;
 }
 
 /** Zod types optional fields as `X | undefined`; Prisma's generated input wants `X | null` under exactOptionalPropertyTypes — never the literal `undefined`. When a customer is logged in, the checkout address is attached to their account so it appears in their saved addresses afterward; guest checkout (userId omitted) keeps it unattached, as before. */
@@ -26,6 +27,7 @@ export function toAddressCreateInput(address: AddressFormInput, userId?: string 
     postalCode: address.postalCode ?? null,
     countryCode: address.countryCode,
     phone: address.phone,
+    whatsappPhone: address.whatsappPhone ?? null,
     userId: userId ?? null,
   };
 }

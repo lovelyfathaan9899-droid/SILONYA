@@ -4,7 +4,7 @@ import { Skeleton } from "./Skeleton";
 
 export interface DataTableColumn<T> {
   key: keyof T & string;
-  header: string;
+  header: ReactNode;
   render?: (row: T) => ReactNode;
   className?: string;
   /** Overrides the React key for this column definition — required when more than one column reads/derives from the same underlying field (e.g. two columns both keyed off "id"). Defaults to `key`. */

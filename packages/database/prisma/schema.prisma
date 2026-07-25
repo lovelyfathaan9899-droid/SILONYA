@@ -184,7 +184,13 @@ model Address {
   postalCode  String? @map("postal_code")
   countryCode String  @map("country_code") @db.Char(2)
   phone       String?
-  isDefault   Boolean @default(false) @map("is_default")
+  // Optional, distinct from `phone` — a customer's WhatsApp number is
+  // sometimes a different line than their contact number (a shared family
+  // phone, a work vs. personal number). WhatsApp sends prefer this when
+  // set, falling back to `phone` (order-notifications.ts) — never a
+  // required field, since most customers use the same number for both.
+  whatsappPhone String? @map("whatsapp_phone")
+  isDefault     Boolean @default(false) @map("is_default")
 
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
@@ -931,14 +937,15 @@ model GiftCardTransaction {
 // 3.9 Content (CMS) — ADMIN_PANEL.md §4.6. "Lightweight structured-content
 // editor... not a general-purpose page builder": every model here is a
 // fixed set of typed fields rendered through an existing, designed
-// component (Hero, PromoBanner, EditorialSection), never a freeform
-// block/drag-and-drop schema.
+// component (Hero, PromoBanner, EditorialSection, AnnouncementBar), never a
+// freeform block/drag-and-drop schema.
 // ─────────────────────────────────────────────────────────────────────────
 
 enum ContentBlockType {
   hero
   promo_banner
   editorial
+  announcement_bar
 }
 
 /**
@@ -1268,4 +1275,24 @@ model Redirect {
   createdAt DateTime @default(now()) @map("created_at")
 
   @@map("redirects")
+}
+
+/**
+ * Store-wide configuration, admin-editable (ADMIN_PANEL.md — "Shipping
+ * should be configurable from admin"). Singleton: exactly one row is ever
+ * expected to exist — services/store-settings.ts's getStoreSettings()
+ * creates it with these same defaults on first read rather than relying on
+ * a seed script, so a fresh environment never has to special-case "no
+ * settings row yet." Amounts are integer minor units (paisa), same
+ * convention as every other money field in this schema.
+ */
+model StoreSettings {
+  id                     String   @id @default(uuid())
+  standardShippingRate   Int      @default(25000) @map("standard_shipping_rate")
+  expressShippingRate    Int      @default(50000) @map("express_shipping_rate")
+  freeShippingThreshold  Int      @default(500000) @map("free_shipping_threshold")
+
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@map("store_settings")
 }

@@ -43,6 +43,13 @@ describe("calculateShipping", () => {
     expect(calculateShipping(0, "standard", true)).toBe(0);
     expect(calculateShipping(0, "express", true)).toBe(0);
   });
+
+  it("uses custom rates when supplied (ADMIN_PANEL.md — admin-configurable shipping), ignoring the defaults entirely", () => {
+    const customRates = { standard: 10000, express: 20000, freeStandardThreshold: 100000 };
+    expect(calculateShipping(50000, "standard", false, customRates)).toBe(10000);
+    expect(calculateShipping(100000, "standard", false, customRates)).toBe(0);
+    expect(calculateShipping(50000, "express", false, customRates)).toBe(20000);
+  });
 });
 
 describe("calculateTax", () => {

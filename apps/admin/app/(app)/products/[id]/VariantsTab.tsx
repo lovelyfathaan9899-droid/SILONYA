@@ -18,9 +18,9 @@ import {
   SelectValue,
   toast,
 } from "@silonya/ui";
-import { parsePriceToMinorUnits } from "@silonya/utils";
+import { parsePriceToMinorUnits, slugify } from "@silonya/utils";
 import { Trash2 } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { formatPKR } from "@/lib/currency";
 import { trpc, type ProductDetail } from "@/lib/trpc";
 
@@ -30,11 +30,26 @@ function variantLabel(variant: Variant): string {
   return variant.optionValues.map((ov) => ov.productOptionValue.value).join(" / ") || "—";
 }
 
+/** First 3 letters of the product's slug segments (up to 2) plus every selected option value, uppercased and hyphenated — e.g. "WOO-OVE-S-BLACK" for Wool Overcoat / Size S / Color Black. A suggestion only: the field stays fully editable, and the backend's unique constraint on `sku` is the real guard against collisions. */
+function suggestSku(product: ProductDetail, selectedValues: Record<string, string>): string {
+  const slugParts = slugify(product.name).split("-").filter(Boolean).slice(0, 2);
+  const prefix = slugParts.map((part) => part.slice(0, 3)).join("-");
+  const valueLabels = product.options
+    .map((option) => {
+      const valueId = selectedValues[option.id];
+      return option.values.find((v) => v.id === valueId)?.value;
+    })
+    .filter((v): v is string => Boolean(v));
+  return [prefix, ...valueLabels].join("-").toUpperCase();
+}
+
 function AddVariantDialog({ product }: { product: ProductDetail }) {
   const utils = trpc.useUtils();
   const [open, setOpen] = useState(false);
   const [selectedValues, setSelectedValues] = useState<Record<string, string>>({});
   const [sku, setSku] = useState("");
+  const [skuTouched, setSkuTouched] = useState(false);
+  const [barcode, setBarcode] = useState("");
   const [price, setPrice] = useState("");
 
   const upsert = trpc.adminCatalog.variants.upsert.useMutation({
@@ -44,6 +59,8 @@ function AddVariantDialog({ product }: { product: ProductDetail }) {
       setOpen(false);
       setSelectedValues({});
       setSku("");
+      setSkuTouched(false);
+      setBarcode("");
       setPrice("");
     },
     onError: (error) => {
@@ -53,6 +70,14 @@ function AddVariantDialog({ product }: { product: ProductDetail }) {
 
   const allValuesSelected = product.options.every((option) => selectedValues[option.id]);
 
+  // Auto-fills the SKU suggestion as option values are picked, but only
+  // until the admin actually types into the field themselves — a manual
+  // edit always wins, and this never re-fires after that.
+  useEffect(() => {
+    if (skuTouched || !allValuesSelected) return;
+    setSku(suggestSku(product, selectedValues));
+  }, [selectedValues, allValuesSelected, skuTouched, product]);
+
   function handleSubmit() {
     if (!allValuesSelected || sku.trim().length === 0) return;
 
@@ -61,6 +86,7 @@ function AddVariantDialog({ product }: { product: ProductDetail }) {
     upsert.mutate({
       productId: product.id,
       sku: sku.trim(),
+      barcode: barcode.trim() || null,
       price: parsedPrice,
       optionValueIds: Object.values(selectedValues),
     });
@@ -104,8 +130,21 @@ function AddVariantDialog({ product }: { product: ProductDetail }) {
               id="variant-sku"
               value={sku}
               onChange={(e) => {
+                setSkuTouched(true);
                 setSku(e.target.value);
               }}
+              placeholder="Auto-filled once options are selected"
+            />
+          </div>
+          <div className="flex flex-col gap-2">
+            <Label htmlFor="variant-barcode">Barcode (optional)</Label>
+            <Input
+              id="variant-barcode"
+              value={barcode}
+              onChange={(e) => {
+                setBarcode(e.target.value);
+              }}
+              placeholder="UPC, EAN, or ISBN"
             />
           </div>
           <div className="flex flex-col gap-2">
@@ -173,6 +212,7 @@ export function VariantsTab({ product }: { product: ProductDetail }) {
         columns={[
           { key: "sku", header: "SKU" },
           { key: "id", id: "options", header: "Options", render: variantLabel },
+          { key: "id", id: "barcode", header: "Barcode", render: (v) => v.barcode ?? "—" },
           {
             key: "price",
             header: "Price",

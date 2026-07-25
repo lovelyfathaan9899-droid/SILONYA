@@ -6,7 +6,7 @@ import { requirePermission, router } from "../trpc";
 const contentRead = requirePermission("content:read");
 const contentWrite = requirePermission("content:write");
 
-const CONTENT_BLOCK_TYPE = z.enum(["hero", "promo_banner", "editorial"]);
+const CONTENT_BLOCK_TYPE = z.enum(["hero", "promo_banner", "editorial", "announcement_bar"]);
 const PAGE_TYPE = z.enum(["editorial", "lookbook", "static_page"]);
 const PAGE_STATUS = z.enum(["draft", "published"]);
 

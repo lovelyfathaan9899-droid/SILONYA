@@ -3,6 +3,7 @@
 import {
   Badge,
   Button,
+  Checkbox,
   ConfirmDialog,
   Container,
   DataTable,
@@ -277,11 +278,134 @@ function RowActions({ row }: { row: ProductRow }) {
   );
 }
 
+/**
+ * Bulk actions reuse the same single-id mutations as the row-level menu
+ * (there's no dedicated bulk endpoint) — each selected id is mutated in
+ * parallel via mutateAsync, which keeps the existing per-item audit log
+ * entries intact rather than requiring a new bulk-specific audit shape.
+ */
+function BulkActionBar({ selectedIds, onClear }: { selectedIds: string[]; onClear: () => void }) {
+  const utils = trpc.useUtils();
+  const [deleteOpen, setDeleteOpen] = useState(false);
+  const [pendingAction, setPendingAction] = useState<
+    "activate" | "deactivate" | "archive" | "delete" | null
+  >(null);
+  const invalidate = () => utils.adminCatalog.products.list.invalidate();
+
+  const activate = trpc.adminCatalog.products.activate.useMutation();
+  const deactivate = trpc.adminCatalog.products.deactivate.useMutation();
+  const archive = trpc.adminCatalog.products.archive.useMutation();
+  const softDelete = trpc.adminCatalog.products.softDelete.useMutation();
+
+  async function runBulk(action: "activate" | "deactivate" | "archive" | "delete") {
+    setPendingAction(action);
+    const mutation =
+      action === "activate"
+        ? activate
+        : action === "deactivate"
+          ? deactivate
+          : action === "archive"
+            ? archive
+            : softDelete;
+
+    const results = await Promise.allSettled(selectedIds.map((id) => mutation.mutateAsync({ id })));
+    const failed = results.filter((r) => r.status === "rejected").length;
+
+    await invalidate();
+    setPendingAction(null);
+    setDeleteOpen(false);
+    onClear();
+
+    if (failed > 0) {
+      toast({
+        title: `${String(failed)} of ${String(selectedIds.length)} failed`,
+        variant: "error",
+      });
+    } else {
+      toast({ title: `${String(selectedIds.length)} product(s) updated`, variant: "success" });
+    }
+  }
+
+  return (
+    <>
+      <div className="bg-ink mb-4 flex flex-wrap items-center gap-3 px-4 py-3">
+        <span className="text-bone font-sans text-sm">{selectedIds.length} selected</span>
+        <Button
+          variant="secondary"
+          size="sm"
+          className="border-bone text-bone hover:bg-bone/10"
+          disabled={pendingAction !== null}
+          onClick={() => {
+            void runBulk("activate");
+          }}
+        >
+          {pendingAction === "activate" ? "Activating…" : "Activate"}
+        </Button>
+        <Button
+          variant="secondary"
+          size="sm"
+          className="border-bone text-bone hover:bg-bone/10"
+          disabled={pendingAction !== null}
+          onClick={() => {
+            void runBulk("deactivate");
+          }}
+        >
+          {pendingAction === "deactivate" ? "Deactivating…" : "Deactivate"}
+        </Button>
+        <Button
+          variant="secondary"
+          size="sm"
+          className="border-bone text-bone hover:bg-bone/10"
+          disabled={pendingAction !== null}
+          onClick={() => {
+            void runBulk("archive");
+          }}
+        >
+          {pendingAction === "archive" ? "Archiving…" : "Archive"}
+        </Button>
+        <Button
+          variant="secondary"
+          size="sm"
+          className="border-bone text-bone hover:bg-bone/10"
+          disabled={pendingAction !== null}
+          onClick={() => {
+            setDeleteOpen(true);
+          }}
+        >
+          Delete
+        </Button>
+        <Button
+          variant="ghost"
+          size="sm"
+          className="text-bone hover:bg-bone/10 ml-auto"
+          onClick={onClear}
+        >
+          Clear selection
+        </Button>
+      </div>
+
+      <ConfirmDialog
+        open={deleteOpen}
+        onOpenChange={setDeleteOpen}
+        title={`Delete ${String(selectedIds.length)} product(s)?`}
+        description="This removes them from the storefront and admin listings. They can be restored later from the deleted-products view."
+        confirmLabel="Delete products"
+        isPending={pendingAction === "delete"}
+        requireTypedWord="DELETE"
+        onConfirm={() => {
+          void runBulk("delete");
+        }}
+      />
+    </>
+  );
+}
+
 export default function ProductsPage() {
   const [search, setSearch] = useState("");
   const [debouncedSearch, setDebouncedSearch] = useState("");
   const [status, setStatus] = useState<StatusFilter>("all");
   const [showDeleted, setShowDeleted] = useState(false);
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
 
   useEffect(() => {
     const timeout = setTimeout(() => {
@@ -303,6 +427,23 @@ export default function ProductsPage() {
   );
 
   const rows: ProductRow[] = query.data?.pages.flatMap((page) => page.items) ?? [];
+  const allLoadedSelected = rows.length > 0 && rows.every((row) => selectedIds.has(row.id));
+
+  useEffect(() => {
+    setSelectedIds(new Set());
+  }, [debouncedSearch, status, showDeleted]);
+
+  function toggleRow(id: string) {
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) {
+        next.delete(id);
+      } else {
+        next.add(id);
+      }
+      return next;
+    });
+  }
 
   return (
     <Section spacing="lg" tone="transparent" container={false}>
@@ -311,6 +452,15 @@ export default function ProductsPage() {
           <h1 className="font-display text-ink text-2xl">Products</h1>
           <NewProductDialog />
         </div>
+
+        {selectedIds.size > 0 ? (
+          <BulkActionBar
+            selectedIds={Array.from(selectedIds)}
+            onClear={() => {
+              setSelectedIds(new Set());
+            }}
+          />
+        ) : null}
 
         <div className="mb-4 flex flex-wrap items-center gap-3">
           <Input
@@ -366,6 +516,31 @@ export default function ProductsPage() {
         ) : (
           <DataTable<ProductRow>
             columns={[
+              {
+                key: "id",
+                id: "select",
+                header: (
+                  <Checkbox
+                    checked={allLoadedSelected}
+                    aria-label="Select all loaded products"
+                    onCheckedChange={() => {
+                      setSelectedIds(
+                        allLoadedSelected ? new Set() : new Set(rows.map((r) => r.id)),
+                      );
+                    }}
+                  />
+                ),
+                render: (row) => (
+                  <Checkbox
+                    checked={selectedIds.has(row.id)}
+                    aria-label={`Select ${row.name}`}
+                    onCheckedChange={() => {
+                      toggleRow(row.id);
+                    }}
+                  />
+                ),
+                className: "w-10",
+              },
               {
                 key: "thumbnailUrl",
                 header: "",

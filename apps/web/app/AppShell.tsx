@@ -1,6 +1,6 @@
 "use client";
 
-import { Footer, Header, ThemeProvider, Toaster, Wordmark } from "@silonya/ui";
+import { AnnouncementBar, Footer, Header, ThemeProvider, Toaster, Wordmark } from "@silonya/ui";
 import Link from "next/link";
 import type { ReactNode } from "react";
 import { HeaderActions } from "@/components/HeaderActions";
@@ -32,10 +32,12 @@ export function AppShell({
   children,
   loggedIn,
   footerSections,
+  announcementBar,
 }: {
   children: ReactNode;
   loggedIn: boolean;
   footerSections: FooterSection[];
+  announcementBar: { id: string; body: string | null } | null;
 }) {
   // CMS-driven footer links (ADMIN_PANEL.md §4.6 "Footer management") — the
   // "Legal" section maps to the Footer component's separate legalLinks
@@ -55,6 +57,9 @@ export function AppShell({
     <CustomerSessionProvider loggedIn={loggedIn}>
       <SessionRefresher />
       <ThemeProvider>
+        {announcementBar?.body ? (
+          <AnnouncementBar message={announcementBar.body} dismissKey={announcementBar.id} />
+        ) : null}
         <Header logo={<Logo />} items={primaryNav} actions={<HeaderActions />} linkAs={Link} />
         <main className="flex-1">{children}</main>
         <Footer

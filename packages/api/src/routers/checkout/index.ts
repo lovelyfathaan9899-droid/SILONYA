@@ -11,6 +11,7 @@ import { siteUrl } from "../../lib/site-url";
 import { toOrderEmailData } from "../../lib/order-email-mapper";
 import { finalizeReservation, reserveInventory } from "../../services/inventory";
 import { notifyNewOrder } from "../../services/notifications/order-events";
+import { getShippingRates } from "../../services/store-settings";
 import { sendOrderConfirmationWhatsApp } from "../../services/whatsapp/order-notifications";
 import { findRedeemableGiftCard } from "../gift-cards";
 import {
@@ -31,6 +32,7 @@ const addressInput = z.object({
   postalCode: z.string().trim().optional(),
   countryCode: z.string().trim().length(2),
   phone: z.string().trim().min(1),
+  whatsappPhone: z.string().trim().min(1).optional(),
 });
 
 const MAX_RETRY_ON_ORDER_NUMBER_COLLISION = 3;
@@ -131,10 +133,12 @@ export const checkoutRouter = router({
         ? await validateDiscountCode(input.discountCode, subtotal, userId)
         : await findAutomaticDiscount(subtotal, userId);
 
+      const shippingRates = await getShippingRates();
       const shippingTotal = calculateShipping(
         subtotal,
         input.shippingMethod,
         discount?.freeShipping ?? false,
+        shippingRates,
       );
       const taxableAmount = subtotal - (discount?.amount ?? 0);
       const taxTotal = calculateTax(taxableAmount, input.shippingAddress.countryCode);
@@ -370,6 +374,11 @@ export const checkoutRouter = router({
 
       return { checkoutUrl: confirmationUrl, orderId: order.id };
     }),
+
+  /** Live shipping-rate preview for the cart/checkout pages (ADMIN_PANEL.md — "shipping configurable from admin") — same values createIntent will actually charge, so the storefront never shows a stale/hardcoded number. */
+  getShippingRates: publicProcedure.query(async () => {
+    return getShippingRates();
+  }),
 
   /** Live cart-page preview — same rules as createIntent, no side effects. */
   previewDiscount: publicProcedure

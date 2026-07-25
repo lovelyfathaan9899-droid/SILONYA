@@ -78,6 +78,7 @@ describe("toAddressCreateInput", () => {
       postalCode: "94105",
       countryCode: "US",
       phone: "+15555550100",
+      whatsappPhone: null,
       userId: null,
     });
   });

@@ -124,6 +124,8 @@ export {
   type ProductGridItem,
   PromoBanner,
   type PromoBannerProps,
+  AnnouncementBar,
+  type AnnouncementBarProps,
   EditorialSection,
   type EditorialSectionProps,
 } from "./sections";

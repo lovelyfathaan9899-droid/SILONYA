@@ -17,6 +17,14 @@ export const cmsRouter = router({
     };
   }),
 
+  // Separate from homepageContent (apps/web/app/page.tsx only) because the
+  // announcement bar renders in AppShell, above every page.
+  announcementBar: publicProcedure.query(async () => {
+    return prisma.contentBlock.findFirst({
+      where: { type: "announcement_bar", isActive: true },
+    });
+  }),
+
   footer: publicProcedure.query(async () => {
     const links = await prisma.footerLink.findMany({
       where: { isActive: true },
