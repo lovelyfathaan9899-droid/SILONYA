@@ -9,7 +9,11 @@ const CSP = [
   "style-src 'self' 'unsafe-inline'",
   "img-src 'self' data: https://res.cloudinary.com https://placehold.co",
   "font-src 'self' data:",
-  "connect-src 'self'",
+  // api.cloudinary.com: MediaTab uploads files with a direct browser-to-
+  // Cloudinary fetch() (see packages/api's getUploadSignature) — without
+  // this, the browser blocks the request at the CSP layer before it's even
+  // sent, surfacing as a generic "Failed to fetch" with no network entry.
+  "connect-src 'self' https://api.cloudinary.com",
   "frame-ancestors 'none'",
   "base-uri 'self'",
   "form-action 'self'",
