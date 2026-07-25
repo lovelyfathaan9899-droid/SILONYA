@@ -33,7 +33,7 @@ export function AnnouncementBar({ message, dismissKey, className }: Announcement
 
   return (
     <div className={cn("bg-ink relative flex items-center justify-center px-10 py-2", className)}>
-      <p className="text-center font-sans text-xs text-white sm:text-sm">{message}</p>
+      <p className="text-bone text-center font-sans text-xs sm:text-sm">{message}</p>
       <button
         type="button"
         aria-label="Dismiss announcement"
@@ -41,7 +41,7 @@ export function AnnouncementBar({ message, dismissKey, className }: Announcement
           window.localStorage.setItem(storageKey, "1");
           setDismissed(true);
         }}
-        className="focus-visible:ring-offset-ink absolute right-3 top-1/2 -translate-y-1/2 text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-offset-2"
+        className="text-bone focus-visible:ring-bone focus-visible:ring-offset-ink absolute right-3 top-1/2 -translate-y-1/2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2"
       >
         <X size={14} strokeWidth={1.5} aria-hidden="true" />
       </button>
